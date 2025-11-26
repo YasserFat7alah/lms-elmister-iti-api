@@ -1,6 +1,6 @@
 import express from "express";
-import multerMiddleware from "../middlewares/multer.middleware";
-import courseController from "../controllers/course.controller";
+import courseController from "../controllers/course.controller.js";
+import multerMiddleware from "../middlewares/multer.middleware.js";
 
 const coursesRouter = express.Router();
 const uploadThumbnail = multerMiddleware.single("thumbnail");

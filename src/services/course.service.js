@@ -1,6 +1,6 @@
-import Course from "../models/Course";
-import BaseService from "./base.service";
-import cloudinaryService from "./cloudinary.service";
+import Course from "../models/Course.js";
+import BaseService from "./base.service.js";
+import cloudinaryService from "./cloudinary.service.js";
 
 class CourseService extends BaseService {
 

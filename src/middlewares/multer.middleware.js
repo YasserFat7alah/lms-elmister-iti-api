@@ -37,4 +37,5 @@ class MulterUploader {
     }
 }
 
-export default new MulterUploader();
+const multerMiddleware = new MulterUploader();
+export default multerMiddleware;
