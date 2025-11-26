@@ -16,7 +16,8 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        minlength: 8
+        minlength: 8,
+        select: false
     },
     age: {
         type: Number,
@@ -68,5 +69,17 @@ const userSchema = new mongoose.Schema({
     ]
 
 }, { timestamps: true });
+
+// Hash password 
+userSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) return next();
+    this.password = await bcrypt.hash(this.password, 12);
+    next();
+});
+
+// Compare password
+userSchema.methods.comparePassword = async function (password) {
+    return await bcrypt.compare(password, this.password);
+};
 
 export default mongoose.model('User', userSchema);
