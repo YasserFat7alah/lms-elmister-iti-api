@@ -1,7 +1,7 @@
 import joi from "joi";
 
 //register
-export const registerValidation = joi.object({
+export const registerSchema = joi.object({
     name: joi.string().required().messages({
         'string.empty': 'Name is required',
         'any.required': 'Name is required'
@@ -21,17 +21,19 @@ export const registerValidation = joi.object({
         'number.min': 'Age must be at least 5 years old',
         'number.max': 'Age must be less than 80 years old'
     }),
-
-    gradeLevel: joi.string().optional().valid('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'),
-    role: joi.string().required().valid( 'teacher', 'parent', 'student').messages({
+    role: joi.string().required().valid('teacher', 'parent', 'student').messages({
         'string.empty': 'Role is required',
         'any.required': 'Role is required',
         'string.valid': 'Role must be teacher, parent, or student'
-    })
+    }),
+    gradeLevel: joi.string().optional().valid('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'),
+    phone: joi.string().optional(),
+    specialization: joi.string().optional(),
+    parentId: joi.string().optional(),
 })
 
 //login
-export const loginValidation = joi.object({
+export const loginSchema = joi.object({
     email: joi.string().email().required().messages({
         'string.empty': 'Email is required',
         'any.required': 'Email is required'

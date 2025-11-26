@@ -61,13 +61,22 @@ class AuthController {
         });
     });
 
-    // refreshToken = asyncHandler(async (req, res) => {
-    //     const refreshToken = req.cookies.refreshToken;
-    //     if (!refreshToken) {
-    //         throw ApiError.unauthorized('Refresh token not found');
-    //     }
-        //in Progress.............................................>>
-    // });
+    refreshToken = asyncHandler(async (req, res) => {
+        const oldRefreshToken = req.cookies.refreshToken;
+        if (!oldRefreshToken) {
+            throw ApiError.unauthorized('Refresh token not found');
+        }
+
+        const { accessToken, refreshToken: newRefreshToken, user } = await authService.refreshTokens(oldRefreshToken);
+
+        this.setRefreshCookie(res, newRefreshToken);
+        res.status(200).json({
+            success: true,
+            message: 'Token refreshed successfully',
+            data: { user, accessToken },
+        });
+    });
+
 }
 
 export default new AuthController();
