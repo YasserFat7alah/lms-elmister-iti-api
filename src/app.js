@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import errorHandler from "./middlewares/error.middleware.js";
+import { authRouter } from "./routes/auth.routes.js";
 // import ApiError from "./utils/ApiError.js";
 
 const app = express();
@@ -12,15 +13,19 @@ const app = express();
 connectDB();
 
 //=======MIDDLEWARES=======
-app.use(cors());
+app.use(cors(
+    {
+        origin: process.env.CLIENT_URL || 'http://localhost:5000',
+        credentials: true
+    }
+));
 app.use(express.json());
 
 
 
 //=======ROUTES=======
-// app.use("/",  )
-//...
-//....
+app.use("/api/v1/auth",authRouter)
+
 
 // app.all(/.*/, (req, res, next) => {
 

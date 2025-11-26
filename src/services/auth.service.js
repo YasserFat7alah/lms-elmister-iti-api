@@ -36,15 +36,16 @@ class AuthService extends BaseService {
         }
     }
 
-    async register(email, password, role) {
+    async register(userData) {
+        const { email, password, role, name, age, gradeLevel,parentId ,specialization} = userData;
         // Check if user exists
-        const existingUser = await this.findOne({ email });
+        const existingUser = await this.model.findOne({ email });
         if (existingUser) {
             throw ApiError.conflict('Email already in use.');
         }
 
         //create user
-        const newUser = await this.create({ email, password, role });
+        const newUser = await this.create({ email, password, role, name, age,gradeLevel,parentId,specialization  });
         //generate tokens
         const { accessToken, refreshToken } = this.generateTokens(newUser._id);
 

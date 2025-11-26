@@ -1,10 +1,16 @@
 import mongoose from "mongoose";
+import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema({
-    username: {
+    name: {
         type: String,
         required: true,
+        trim: true
+    },
+    username: {
+        type: String,
         trim: true,
+        unique: true
     },
     email: {
         type: String,
@@ -13,10 +19,6 @@ const userSchema = new mongoose.Schema({
         trim: true,
     },
     password: {
-      type: String,
-      required: true,
-      trim: true,
-      minlength: 8,
         type: String,
         required: true,
         trim: true,
@@ -29,8 +31,11 @@ const userSchema = new mongoose.Schema({
     },
 
     gradeLevel: {
+        type: String,
         enum: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
-        required: true
+        required: function () {
+            return this.role === "student";
+        }
     },
 
     phone: {
@@ -52,7 +57,6 @@ const userSchema = new mongoose.Schema({
         required: function () {
             return this.role === "teacher";
         },
-        default: null
     },
 
     parentId: {
@@ -65,21 +69,28 @@ const userSchema = new mongoose.Schema({
 
     childrenId: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: function () {
-            return this.role === "parent";
-        },
+        ref: "User",  
     }
     ]
 
 }, { timestamps: true });
 
-// Hash password 
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
-    this.password = await bcrypt.hash(this.password, 12);
-    next();
+userSchema.pre('save', async function () {
+    // Hash password if modified
+    if (this.isModified('password')) {
+        this.password = await bcrypt.hash(this.password, 12);
+    }
+
+    // Generate username
+    if (!this.username) {
+        const namePart = this.name.replace(/\s+/g, '').toLowerCase();
+        const timestamp = Date.now();
+        const shortTimestamp = timestamp.toString().slice(-4);
+        this.username = `${namePart}${shortTimestamp}`;
+    }
+
 });
+
 
 // Compare password
 userSchema.methods.comparePassword = async function (password) {
