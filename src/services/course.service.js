@@ -13,20 +13,22 @@ class CourseService extends BaseService {
      * @param {Object} data - The course data.
      * @returns {Object} The newly created course.
      */
-    async create(data, fileBuffer) {
+    async create(data, file) {
         let thumbnail = null;
-
-        if (fileBuffer) { // If there's a thumbnail to upload
-            thumbnail = fileBuffer;
-            const uploadResult = await cloudinaryService.uploadBuffer(thumbnail, "courses",);
+        
+        if (file) { // If there's a thumbnail to upload
+            thumbnail = cloudinaryService.toDataUri(file);
+            
+            const uploadResult = await cloudinaryService.upload(thumbnail, "courses");
 
             thumbnail = {
                 url: uploadResult.secure_url,
                 publicId: uploadResult.public_id
             };
         }
-
         const newCourse = await super.create({...data, thumbnail});
+        console.log("Course saved", newCourse);
+
         return newCourse;
     }
 }

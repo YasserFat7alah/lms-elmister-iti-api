@@ -6,7 +6,7 @@ class MulterUploader {
 
         this.upload = multer({ 
             storage: this.storage   ,
-            limits: { fileSize: 1000000*5 }, // 5MB limit
+            limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 
             fileFilter: function (req, file, cb) {
                 if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {

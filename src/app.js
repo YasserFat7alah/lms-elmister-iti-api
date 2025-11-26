@@ -17,7 +17,11 @@ app.use(cors());
 app.use(express.json());
 
 /* --- --- --- END POINTS --- --- --- */
-app.use("api/v1/courses", courseRouter)
+app.use("/api/v1/courses", courseRouter);
+
+app.get("/ping", (req, res) => {
+    res.json({ message: "pong" });
+});
 
 // app.all(/.*/, (req, res, next) => {
 // }

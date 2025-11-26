@@ -18,11 +18,14 @@ class CourseController {
     }
 
 /* --- --- --- CREATE COURSE --- --- --- */
-    async create(req, res, next) {
+    create = async (req, res, next) => {
         try {
+            console.log("req.file:", req.file);
+
             const data = req.body;
-            const fileBuffer = req.file ? req.file.buffer : null;
-            const newCourse = await this.courseService.create(data, fileBuffer);
+            const file = req.file ? req.file : null;
+            
+            const newCourse = await this.courseService.create(data, file);
             res.status(201).json(newCourse);
         } catch (error) {
             next(error);
@@ -30,7 +33,7 @@ class CourseController {
     }
 
 /* --- --- --- GET ALL COURSES --- --- --- */
-    async getAll(req, res, next) {
+    getAll = async (req, res, next) => {
         try {
             const courses = await this.courseService.findAll();
             res.status(200).json(courses);
@@ -40,7 +43,7 @@ class CourseController {
     }
 
 /* --- --- --- GET COURSE BY ID --- --- --- */
-    async getById(req, res, next) {
+    getById = async (req, res, next) => {
         try {
             const course = await this.courseService.findById(req.params.id);
             res.status(200).json(course);
@@ -50,7 +53,7 @@ class CourseController {
     }
 
 /* --- --- --- UPDATE COURSE --- --- --- */
-    async update(req, res, next) {
+    update = async (req, res, next) => {
         try {
             const updatedCourse = await this.courseService.updateById(req.params.id, req.body);
             res.status(200).json(updatedCourse);
@@ -60,7 +63,7 @@ class CourseController {
     }
 
 /* --- --- --- DELETE COURSE --- --- --- */   
-    async delete(req, res, next) {
+    delete = async (req, res, next) => {
         try {
             await this.courseService.deleteById(req.params.id);
             res.status(204).send();
