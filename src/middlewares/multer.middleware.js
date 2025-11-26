@@ -13,8 +13,7 @@ class MulterUploader {
                     cb(null, true);
                 } else {
                     cb(new Error('Only .jpeg and .png files are allowed!'), false);
-                }
-            }   
+                }}   
         });
     }
 

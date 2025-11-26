@@ -4,30 +4,25 @@ import express from "express";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import errorHandler from "./middlewares/error.middleware.js";
+import courseRouter from "./routes/course.routes.js";
 // import ApiError from "./utils/ApiError.js";
 
 const app = express();
 
-//=======DB Connection=======
+/* --- --- --- DB Connection --- --- --- */
 connectDB();
 
-//=======MIDDLEWARES=======
+/* --- --- --- MIDDLEWARES --- --- --- */
 app.use(cors());
 app.use(express.json());
 
-
-
-//=======ROUTES=======
-// app.use("/",  )
-//...
-//....
+/* --- --- --- END POINTS --- --- --- */
+app.use("api/v1/courses", courseRouter)
 
 // app.all(/.*/, (req, res, next) => {
-
 // }
 
-//===============================Error Handler===================================
+/* --- --- --- ERROR HANDLER --- --- --- */
 app.use(errorHandler);
-
 
 export default app;
