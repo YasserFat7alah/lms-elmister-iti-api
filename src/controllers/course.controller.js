@@ -1,5 +1,5 @@
 import courseService from "../services/course.service.js";
-import { asyncHandler } from 'express-async-handler';
+import asyncHandler from "express-async-handler";
 import ApiError from "../utils/ApiError.js";
 
 
@@ -24,7 +24,7 @@ class CourseController {
             const data = req.body;
             const file = req.file ? req.file : null;
             if(!data.title || !data.description) 
-                throw new ApiError.badRequest("Title and Description are required");
+                throw ApiError.badRequest("Title and Description are required");
 
             const newCourse = await this.courseService.create(data, file);
             res.status(201).json(newCourse);
@@ -49,7 +49,7 @@ class CourseController {
             const file = req.file ? req.file : null;
 
             if(!data || !file) 
-                throw new ApiError.badRequest("No data provided for update");
+                throw ApiError.badRequest("No data provided for update");
             const id = req.params.id;
             const updatedCourse = await this.courseService.updateById(id, data, file);
             res.status(200).json(updatedCourse);

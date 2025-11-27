@@ -11,6 +11,4 @@ cloudinary.config({
     api_secret: url.password,
 });
 
-console.log("Cloudinary current config:", cloudinary.config());
-
 export default cloudinary;

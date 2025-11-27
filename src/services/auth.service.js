@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import bycrypt from 'bcrypt';
 import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import BaseService from './base.service.js';
