@@ -19,7 +19,8 @@ const CourseSchema = new mongoose.Schema(
 
     thumbnail: {
       url: { type: String },
-      publicId: { type: String }, // Needed for Cloudinary delete
+      publicId: { type: String },
+      type: { type: String }
     },
 
     subject: {
@@ -103,5 +104,10 @@ const CourseSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+CourseSchema.index({ teacherId: 1 });
+CourseSchema.index({ tags: 1 });
+CourseSchema.index({ status: 1 });
+CourseSchema.index({ title: "text", description: "text" });
 
 export default mongoose.model("Course", CourseSchema);

@@ -1,6 +1,8 @@
+import e from "express";
 import Course from "../models/Course.js";
 import BaseService from "./base.service.js";
 import cloudinaryService from "./cloudinary.service.js";
+import ApiError from "../utils/ApiError.js";
 
 class CourseService extends BaseService {
 
@@ -8,28 +10,67 @@ class CourseService extends BaseService {
         super(Course);
     }
 
-    /**
-     * Creates a new course with optional thumbnail upload.
+    /** Creates a new course with optional thumbnail upload.
      * @param {Object} data - The course data.
+     * @param {Object} thumbnailFile - The thumbnail file to upload.
      * @returns {Object} The newly created course.
      */
-    async create(data, file) {
+    async create(data, thumbnailFile) {
         let thumbnail = null;
         
-        if (file) { // If there's a thumbnail to upload
-            thumbnail = cloudinaryService.toDataUri(file);
-            
-            const uploadResult = await cloudinaryService.upload(thumbnail, "courses");
+        if (thumbnailFile) { // If there's a thumbnail to upload
+            const uploadResult = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/");
 
             thumbnail = {
-                url: uploadResult.secure_url,
-                publicId: uploadResult.public_id
+                url: uploadResult.url,
+                publicId: uploadResult.publicId
             };
         }
         const newCourse = await super.create({...data, thumbnail});
-        console.log("Course saved", newCourse);
-
         return newCourse;
+    }
+
+    /** Update course with optional thumbnail replacement
+     * @param {string} _id - The ID of the course to update
+     * @param {Object} data - The updated course data
+     * @param {Object} thumbnailFile - The new thumbnail file to upload
+     * @returns {Object} The updated course
+     */
+    async updateById(_id, data, thumbnailFile) {
+        const course = await super.findById(_id);
+        if(!course) 
+            throw new ApiError.notFound("Course not found");
+
+        let thumbnail = course.thumbnail;
+
+        if (thumbnailFile) {
+            if (thumbnail?.publicId) {
+                await cloudinaryService.delete(thumbnail.publicId, thumbnail.type);
+            }
+
+            // 2) Upload new one
+            const uploaded = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/");
+            thumbnail = {
+                ...uploaded
+            };
+        }
+
+        return await super.updateById(_id, { ...data, thumbnail },{ new: true });
+    }
+
+    /** Delete course and its associated thumbnail from Cloudinary
+     * @param {string} _id - The ID of the course to delete
+     * @returns {Object} The deleted course
+     */
+    async deleteById(_id) {
+        const course = await super.findById(_id);
+
+        if (course) {
+            if(course.thumbnail?.publicId) await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type);
+            return await super.deleteById(_id);
+        }else {
+            throw new ApiError.notFound("Course not found");
+        }
     }
 }
 

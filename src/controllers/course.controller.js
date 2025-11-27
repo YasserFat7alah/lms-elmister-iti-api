@@ -1,4 +1,6 @@
 import courseService from "../services/course.service.js";
+import { asyncHandler } from 'express-async-handler';
+import ApiError from "../utils/ApiError.js";
 
 
 /**
@@ -18,59 +20,46 @@ class CourseController {
     }
 
 /* --- --- --- CREATE COURSE --- --- --- */
-    create = async (req, res, next) => {
-        try {
-            console.log("req.file:", req.file);
-
+    create = asyncHandler(async (req, res, next) => {
             const data = req.body;
             const file = req.file ? req.file : null;
-            
+            if(!data.title || !data.description) 
+                throw new ApiError.badRequest("Title and Description are required");
+
             const newCourse = await this.courseService.create(data, file);
             res.status(201).json(newCourse);
-        } catch (error) {
-            next(error);
-        }
-    }
+
+    });
 
 /* --- --- --- GET ALL COURSES --- --- --- */
-    getAll = async (req, res, next) => {
-        try {
+    getAll = asyncHandler(async (req, res, next) => {
             const courses = await this.courseService.findAll();
             res.status(200).json(courses);
-        } catch (error) {
-            next(error);
-        }
-    }
+    });
 
 /* --- --- --- GET COURSE BY ID --- --- --- */
-    getById = async (req, res, next) => {
-        try {
+    getById = asyncHandler(async (req, res, next) => {
             const course = await this.courseService.findById(req.params.id);
             res.status(200).json(course);
-        } catch (error) {
-            next(error);
-        }   
-    }
+    });
 
 /* --- --- --- UPDATE COURSE --- --- --- */
-    update = async (req, res, next) => {
-        try {
-            const updatedCourse = await this.courseService.updateById(req.params.id, req.body);
+    updateById = asyncHandler(async (req, res, next) => {
+            const data = req.body;
+            const file = req.file ? req.file : null;
+
+            if(!data || !file) 
+                throw new ApiError.badRequest("No data provided for update");
+            const id = req.params.id;
+            const updatedCourse = await this.courseService.updateById(id, data, file);
             res.status(200).json(updatedCourse);
-        } catch (error) {
-            next(error);
-        }
-    }
+        });
 
 /* --- --- --- DELETE COURSE --- --- --- */   
-    delete = async (req, res, next) => {
-        try {
+    deleteById = asyncHandler(async (req, res, next) => {
             await this.courseService.deleteById(req.params.id);
             res.status(204).send();
-        } catch (error) {
-            next(error);
-        }
-    }
+        });
 }
 
 export default new CourseController(courseService);
