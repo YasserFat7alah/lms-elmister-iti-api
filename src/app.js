@@ -5,14 +5,15 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import errorHandler from "./middlewares/error.middleware.js";
 import { authRouter } from "./routes/auth.routes.js";
+import courseRouter from "./routes/course.routes.js";
 // import ApiError from "./utils/ApiError.js";
 
 const app = express();
 
-//=======DB Connection=======
+/* --- --- --- DB Connection --- --- --- */
 connectDB();
 
-//=======MIDDLEWARES=======
+/* --- --- --- MIDDLEWARES --- --- --- */
 app.use(cors(
     {
         origin: process.env.CLIENT_URL || 'http://localhost:5000',
@@ -21,18 +22,19 @@ app.use(cors(
 ));
 app.use(express.json());
 
-
-
-//=======ROUTES=======
+/* --- --- --- END POINTS --- --- --- */
 app.use("/api/v1/auth",authRouter)
+app.use("/api/v1/courses", courseRouter);
+
+app.get("/ping", (req, res) => { // health check endpoint
+    res.json({ message: "pong" });
+});
 
 
 // app.all(/.*/, (req, res, next) => {
-
 // }
 
-//===============================Error Handler===================================
+/* --- --- --- ERROR HANDLER --- --- --- */
 app.use(errorHandler);
-
 
 export default app;
