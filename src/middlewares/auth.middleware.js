@@ -1,7 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import ApiError from '../utils/ApiError.js';
+import AppError from '../utils/AppError.js';
 
 class AuthMW {
     protect = asyncHandler(async (req, res, next) => {
@@ -14,7 +14,7 @@ class AuthMW {
 
         if (!token) {
             res.status(401);
-            throw ApiError.unauthorized('Not authorized, no token');
+            throw AppError.unauthorized('Not authorized, no token');
         }
 
         try {
@@ -23,7 +23,7 @@ class AuthMW {
             next();
         } catch (error) {
             res.status(401);
-            throw ApiError.unauthorized('Not authorized, token failed');
+            throw AppError.unauthorized('Not authorized, token failed');
         }
     })
 
@@ -32,7 +32,7 @@ class AuthMW {
         return (req, res, next) => {
             if (!roles.includes(req.user.role)) {
                 res.status(403);
-                throw ApiError.forbidden(`Access denied: Requires ${roles.join(' or ')} role`);
+                throw AppError.forbidden(`Access denied: Requires ${roles.join(' or ')} role`);
             }
             next();
         };

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { GRADE_LEVELS } from "../utils/constants.js";
 
 const CourseSchema = new mongoose.Schema(
   {
@@ -31,10 +32,7 @@ const CourseSchema = new mongoose.Schema(
 
     gradeLevel: {
       type: String,
-      enum: [
-        "1","2","3","4","5","6","7","8",
-        "9","10","11","12"
-      ],
+      enum: GRADE_LEVELS,
       required: true,
     },
 

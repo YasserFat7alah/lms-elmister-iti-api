@@ -1,4 +1,4 @@
-import ApiError from "../utils/ApiError.js";
+import AppError from "../utils/app.error.js";
 
 //SERVICE THAT DEALS WITH THE DATABASE LAYER (Takes the MODEL as an argument to do the queries)
 class BaseService {
@@ -10,7 +10,7 @@ class BaseService {
         if (select) query.select(select);
         const result = await query;
         if (!result) {
-            throw ApiError.notFound(`Resource not found.`);
+            throw AppError.notFound(`Resource not found.`);
         }
         return result;
     }
@@ -20,7 +20,7 @@ class BaseService {
         if (select) query.select(select);
         const result = await query;
         if (!result) {
-            throw ApiError.notFound(`Resource with id ${id} not found.`);
+            throw AppError.notFound(`Resource with id ${id} not found.`);
         }
         return result;
 

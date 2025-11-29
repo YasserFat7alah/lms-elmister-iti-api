@@ -1,8 +1,7 @@
-import e from "express";
 import Course from "../models/Course.js";
 import BaseService from "./base.service.js";
 import cloudinaryService from "./cloudinary.service.js";
-import ApiError from "../utils/ApiError.js";
+import AppError from "../utils/app.error.js";
 
 class CourseService extends BaseService {
 
@@ -39,7 +38,7 @@ class CourseService extends BaseService {
     async updateById(_id, data, thumbnailFile) {
         const course = await super.findById(_id);
         if(!course) 
-            throw new ApiError.notFound("Course not found");
+            throw new AppError.notFound("Course not found");
 
         let thumbnail = course.thumbnail;
 
@@ -69,7 +68,7 @@ class CourseService extends BaseService {
             if(course.thumbnail?.publicId) await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type);
             return await super.deleteById(_id);
         }else {
-            throw new ApiError.notFound("Course not found");
+            throw new AppError.notFound("Course not found");
         }
     }
 }

@@ -1,4 +1,4 @@
-import ApiError from "../utils/ApiError.js";
+import AppError from "../utils/app.error.js";
 import asyncHandler from "express-async-handler";
 import authService from "../services/auth.service.js";
 
@@ -17,7 +17,7 @@ class AuthController {
     register = asyncHandler(async (req, res) => {
         const { name, email, password, role, age } = req.body;
         if (!name || !email || !password || !role || !age) {
-            throw ApiError.badRequest('Name, email, and password are required');
+            throw AppError.badRequest('Name, email, and password are required');
         }
 
         const { accessToken, refreshToken, user } = await authService.register(req.body);
@@ -36,7 +36,7 @@ class AuthController {
     login = asyncHandler(async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) {
-            throw ApiError.badRequest('Email and password are required');
+            throw AppError.badRequest('Email and password are required');
         }
 
         const { accessToken, refreshToken, user } = await authService.login(email, password);
@@ -64,7 +64,7 @@ class AuthController {
     refreshToken = asyncHandler(async (req, res) => {
         const oldRefreshToken = req.cookies.refreshToken;
         if (!oldRefreshToken) {
-            throw ApiError.unauthorized('Refresh token not found');
+            throw AppError.unauthorized('Refresh token not found');
         }
 
         const { accessToken, refreshToken: newRefreshToken, user } = await authService.refreshTokens(oldRefreshToken);

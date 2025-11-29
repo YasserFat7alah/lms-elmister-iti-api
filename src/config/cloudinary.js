@@ -1,9 +1,10 @@
 import cloudinary from "cloudinary";
 import dotenv from "dotenv";
+import { CLOUDINARY_URL } from "../utils/constants.js";
 
 dotenv.config();
 
-const url = new URL(process.env.CLOUDINARY_URL);
+const url = new URL(CLOUDINARY_URL);
 
 cloudinary.config({
     cloud_name: url.hostname,

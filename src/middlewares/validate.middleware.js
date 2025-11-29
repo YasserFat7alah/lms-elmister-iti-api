@@ -1,4 +1,4 @@
-import ApiError from "../utils/ApiError.js";
+import AppError from "../utils/app.error.js";
 
 
 const validate = (schema, prop = 'body') => {
@@ -6,7 +6,7 @@ const validate = (schema, prop = 'body') => {
         const { error } = schema.validate(req[prop], { abortEarly: false });
         if (error) {
             const details = error.details.map(detail => detail.message).join(', ');
-            return next(ApiError.badRequest(details));
+            return next(AppError.badRequest(details));
         }
         next();
     };

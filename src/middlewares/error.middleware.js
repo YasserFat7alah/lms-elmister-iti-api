@@ -1,9 +1,9 @@
-import ApiError from "../utils/ApiError.js";
+import AppError from "../utils/app.error.js";
 
 const errorHandler = (err, req, res, next) => {
-    if (!(err instanceof ApiError)) {
+    if (!(err instanceof AppError)) {
         console.error('Unhandled Error:', err);
-        err = ApiError.internal(err.message || 'Internal server error');
+        err = AppError.internal(err.message || 'Internal server error');
     }
     const statusCode = err.status || 500;
     const env = process.env.NODE_ENV || 'development';

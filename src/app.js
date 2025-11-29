@@ -1,12 +1,11 @@
-import dotenv from "dotenv";
-dotenv.config();
 import express from "express";
 import cors from "cors";
-import connectDB from "./config/db.js";
+import connectDB from "./config/database.js";
 import errorHandler from "./middlewares/error.middleware.js";
 import { authRouter } from "./routes/auth.routes.js";
 import courseRouter from "./routes/course.routes.js";
-// import ApiError from "./utils/ApiError.js";
+import { CLIENT_URL } from "./utils/constants.js";
+// import AppError from "./utils/AppError.js";
 
 const app = express();
 
@@ -16,7 +15,7 @@ connectDB();
 /* --- --- --- MIDDLEWARES --- --- --- */
 app.use(cors(
     {
-        origin: process.env.CLIENT_URL || 'http://localhost:5000',
+        origin: CLIENT_URL,
         credentials: true
     }
 ));

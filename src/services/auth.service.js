@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import ApiError from '../utils/ApiError.js';
+import AppError from '../utils/app.error.js';
 import BaseService from './base.service.js';
+import { JWT_ACCESS_EXPIRE, JWT_REFRESH_EXPIRE, JWT_SECRET } from '../utils/constants.js';
 
 class AuthService extends BaseService {
     constructor() {
@@ -9,14 +10,14 @@ class AuthService extends BaseService {
     }
 
     generateAccessToken(userId) {
-        return jwt.sign({ id: userId }, process.env.JWT_ACCESS_SECRET, {
-            expiresIn: process.env.JWT_ACCESS_EXPIRE || '15m',
+        return jwt.sign({ id: userId }, JWT_SECRET, {
+            expiresIn: JWT_ACCESS_EXPIRE,
         });
     }
 
     generateRefreshToken(userId) {
-        return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
-            expiresIn: process.env.JWT_REFRESH_EXPIRE || '7d',
+        return jwt.sign({ id: userId }, JWT_SECRET, {
+            expiresIn: JWT_REFRESH_EXPIRE,
         });
     }
 
@@ -29,9 +30,9 @@ class AuthService extends BaseService {
 
     verifyRefreshToken(token) {
         try {
-            return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+            return jwt.verify(token, JWT_SECRET);
         } catch {
-            throw ApiError.unauthorized('Invalid or expired refresh token');
+            throw AppError.unauthorized('Invalid or expired refresh token');
         }
     }
 
@@ -40,7 +41,7 @@ class AuthService extends BaseService {
         // Check if user exists
         const existingUser = await this.model.findOne({ email });
         if (existingUser) {
-            throw ApiError.conflict('Email already in use.');
+            throw AppError.conflict('Email already in use.');
         }
         const allowedFields = [
             "name",
@@ -74,12 +75,12 @@ class AuthService extends BaseService {
     async login(email, password) {
         const user = await this.model.findOne({ email }).select('+password');
         if (!user) {
-            throw ApiError.unauthorized('Invalid email or password.');
+            throw AppError.unauthorized('Invalid email or password.');
         }
 
         const isPasswordMatch = await user.comparePassword(password);
         if (!isPasswordMatch) {
-            throw ApiError.unauthorized('Invalid email or password.');
+            throw AppError.unauthorized('Invalid email or password.');
         }
         const { accessToken, refreshToken } = this.generateTokens(user._id);
         return {
@@ -91,7 +92,7 @@ class AuthService extends BaseService {
     async refreshTokens(refreshToken) {
         const decoded = this.verifyRefreshToken(refreshToken);
         const user = await this.findById(decoded.id);
-        if (!user) throw ApiError.unauthorized('User not found');
+        if (!user) throw AppError.unauthorized('User not found');
 
         const tokens = this.generateTokens(user._id);
         return {
