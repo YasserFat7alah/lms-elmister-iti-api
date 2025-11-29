@@ -4,6 +4,7 @@ dotenv.config();
 /* --- --- --- ENVIRONMENT VARIABLES --- --- --- */
 // ===> Base
 export const ENVIRONMENT = process.env.NODE_ENV || 'development'; // 'development' | 'production' | 'test'
+export const IS_PRODUCTION = ENVIRONMENT === 'production';
 
 // ===> App
 export const PORT = process.env.PORT || 5000;
@@ -27,3 +28,10 @@ export const GRADE_LEVELS = [
     "9","10","11","12"
 ];
 
+// ===> Cookie Settings
+export const COOKIE_SETTINGS = {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: 'Lax',
+    maxAge: JWT_REFRESH_EXPIRE,
+};

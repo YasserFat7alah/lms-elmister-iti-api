@@ -8,17 +8,20 @@ const userSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+
     username: {
         type: String,
         trim: true,
         unique: true
     },
+
     email: {
         type: String,
         required: true,
         unique: true,
         trim: true,
     },
+
     password: {
         type: String,
         required: true,
@@ -26,46 +29,22 @@ const userSchema = new mongoose.Schema({
         minlength: 8,
         select: false
     },
-    age: {
-        type: Number,
-        required: true
-    },
 
-    gradeLevel: {
-        type: String,
-        enum: GRADE_LEVELS,
-        required: function () {
-            return this.role === "student";
-        }
+    avatar: {
+        url: { type: String },
+        publicId: { type: String },
+        type: { type: String }
     },
 
     phone: {
         type: String,
         trim: true
     },
-    avatar: {
-        url: { type: String },
-        publicId: { type: String }
-    },
 
     role: {
         type: String,
         enum: ["admin", "teacher", "parent", "student"],
         required: true
-    },
-    specialization: {
-        type: String,
-        required: function () {
-            return this.role === "teacher";
-        },
-    },
-
-    parentId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: function () {
-            return this.role === "student";
-        },
     },
 
     childrenId: [{

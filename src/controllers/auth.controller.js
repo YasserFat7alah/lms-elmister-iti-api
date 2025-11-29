@@ -1,19 +1,17 @@
 import AppError from "../utils/app.error.js";
 import asyncHandler from "express-async-handler";
 import authService from "../services/auth.service.js";
+import { COOKIE_SETTINGS, IS_PRODUCTION, JWT_REFRESH_EXPIRE } from "../utils/constants.js";
 
 
 class AuthController {
 
-    setRefreshCookie(res, refreshToken) {
-        res.cookie('jwt', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // MUST be true in production!!!!!!
-            sameSite: 'Lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days 
-        });
-    }
+/* --- --- --- AUTH CONTROLLER --- --- --- */    
 
+    /** Register a new user
+     * @route POST /api/v1/auth/register
+     * @access Public
+     */
     register = asyncHandler(async (req, res) => {
         const { name, email, password, role, age } = req.body;
         if (!name || !email || !password || !role || !age) {
@@ -33,6 +31,10 @@ class AuthController {
         });
     });
 
+    /** Login a user
+     * @route POST /api/v1/auth/login
+     * @access Public
+     */
     login = asyncHandler(async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) {
@@ -49,15 +51,32 @@ class AuthController {
         });
     });
 
+    /** Logout a user by clearing the refresh token cookie
+     * @route POST /api/v1/auth/logout
+     * @access Public
+     */
     logout = asyncHandler(async (req, res) => {
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-        });
+        res.clearCookie('refreshToken', COOKIE_SETTINGS);
 
         res.status(200).json({
             message: 'Logged out successfully',
+        });
+    });
+
+    /** Forgot password - initiate password reset
+     * @route POST /api/v1/auth/forgot-password
+     * @access Public
+     */
+    forgotPassword = asyncHandler(async (req, res) => {
+        const { email } = req.body;
+        if (!email) {
+            throw AppError.badRequest('Email is required');
+        }
+        await mailService.initiatePasswordReset(email);
+
+        res.status(200).json({
+            success: true,
+            message: 'Password reset initiated. Please check your email for further instructions.',
         });
     });
 
@@ -76,6 +95,16 @@ class AuthController {
             data: { user, accessToken },
         });
     });
+
+/* --- --- --- HELPERS --- --- --- */
+
+    /** Set the refresh token cookie with appropriate options 
+     * @param {object} res - The Express response object
+     * @param {string} refreshToken - The refresh token to set in the cookie
+    */
+    setRefreshCookie(res, refreshToken) {
+        res.cookie('refreshToken', refreshToken, COOKIE_SETTINGS);
+    }
 
 }
 
