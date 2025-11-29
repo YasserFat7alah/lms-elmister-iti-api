@@ -1,8 +1,10 @@
+import mongoose from "mongoose";
 import AppError from "../utils/app.error.js";
 
 //SERVICE THAT DEALS WITH THE DATABASE LAYER (Takes the MODEL as an argument to do the queries)
 class BaseService {
     constructor(model) {
+        if (!model) throw new Error("Model required");
         this.model = model;
     }
 
@@ -31,6 +33,8 @@ class BaseService {
      * @throws {AppError} If no document is found
      */
     async findById(id, select = '') {
+        this._validateId(id);
+
         const query = this.model.findById(id);
         if (select) query.select(select);
         const result = await query;
@@ -65,11 +69,18 @@ class BaseService {
      * @returns {object} The updated document
      */
     async updateById(id, data) {
-        return await this.model.findByIdAndUpdate(
+        this._validateId(id);
+
+        const updated = await this.model.findByIdAndUpdate(
             id,
             data,
             { new: true, runValidators: true }
         );
+
+        if (!updated) {
+            throw AppError.notFound(`Resource with id: ${id} not found.`);
+        }
+        return updated;
     }
 
     /** Delete a document by ID
@@ -77,7 +88,13 @@ class BaseService {
      * @returns {object} The deleted document
      */
     async deleteById(id) {
-        return await this.model.findByIdAndDelete(id);
+        this._validateId(id);
+        const deleted = await this.model.findByIdAndDelete(id);
+        
+        if (!deleted) {
+            throw AppError.notFound(`Resource with id: ${id} not found.`);
+        }
+        return deleted;
     }
 
     /* --- --- --- STATISTICS --- --- --- */
@@ -90,7 +107,7 @@ class BaseService {
         return await this.model.countDocuments(filter);
     }
 
-    /* --- --- --- SANITIZATION --- --- --- */
+    /* --- --- --- HELPERS --- --- --- */
 
     /** Sanitize document by removing sensitive fields
      * @param {object} doc - The document to sanitize
@@ -99,18 +116,26 @@ class BaseService {
     sanitize(doc) {
         if (!doc) return null;
 
-        const obj = doc.toObject ? doc.toObject({ virtuals: true }) : doc;
-        const { password, __v, _id, childrenId, ...safe } = obj;
+        const obj = doc.toObject ? doc.toObject({ virtuals: true }) : {...doc};
+        const { password, __v, childrenId, ...rest } = obj;
         
-        let result = { ...safe };
-        if (safe.role === 'parent') {
-            result.childrenId = childrenId;
-        }
+        let safe = { ...rest };
+        if (rest.role === 'parent') safe.childrenId = childrenId;
+
         return {
-            id: _id,
-            ...result
+            ...safe
         };
     }
+
+    /** Validate if the given ID is a valid MongoDB ObjectId
+     * @param {string} id - The ID to validate
+     * @throws {AppError} If the ID is not valid
+     */
+    _validateId(id) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw AppError.badRequest(`Invalid id: ${id}`);
+    }
+  }
 
 }
 
