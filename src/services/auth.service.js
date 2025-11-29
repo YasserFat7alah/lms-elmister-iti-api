@@ -2,43 +2,33 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import AppError from '../utils/app.error.js';
 import BaseService from './base.service.js';
-import { JWT_ACCESS_EXPIRE, JWT_REFRESH_EXPIRE, JWT_SECRET } from '../utils/constants.js';
+import { JWT_ACCESS_EXPIRE, JWT_REFRESH_EXPIRE, JWT_REFRESH_SECRET, JWT_SECRET } from '../utils/constants.js';
 
-class AuthService extends BaseService {
+export class AuthService extends BaseService {
     constructor(User) {
         super(User);
     }
 
-    /* --- --- --- JWT ACCESS --- --- --- */
+    /* --- --- --- JWT --- --- --- */
 
     /** Generate Access Token
      * @param {string} userId - The ID of the user
+     * @param {string} secret - The secret key for signing the token
+     * @param {string} expiresIn - The expiration time for the token
      * @returns {string} The generated access token
      */
-    generateAccessToken(userId) {
-        return jwt.sign({ id: userId }, JWT_SECRET, {
-            expiresIn: JWT_ACCESS_EXPIRE,
-        });
-    }
-
-    /** Generate Refresh Token
-     * @param {string} userId - The ID of the user
-     * @returns {string} The generated refresh token
-     */
-    generateRefreshToken(userId) {
-        return jwt.sign({ id: userId }, JWT_SECRET, {
-            expiresIn: JWT_REFRESH_EXPIRE,
-        });
+    generateToken(user, secret = JWT_SECRET, expiresIn = JWT_ACCESS_EXPIRE) {
+        return jwt.sign({ id: user._id ,role: user.role }, secret, { expiresIn });
     }
 
     /** Generate Access and Refresh Tokens
      * @param {string} userId - The ID of the user
      * @returns {object} An object containing the access and refresh tokens
      */
-    generateTokens(userId) {
+    generateTokens(user) {
         return {
-            accessToken: this.generateAccessToken(userId),
-            refreshToken: this.generateRefreshToken(userId),
+            accessToken: this.generateToken(user, JWT_SECRET, JWT_ACCESS_EXPIRE),
+            refreshToken: this.generateToken(user, JWT_REFRESH_SECRET, JWT_REFRESH_EXPIRE),
         };
     }
 
@@ -47,9 +37,9 @@ class AuthService extends BaseService {
      * @returns {object} The decoded token payload
      * @throws {AppError} If the token is invalid or expired
      */
-    verifyToken(token) {
+    verifyToken(token, secret) {
         try {
-            return jwt.verify(token, JWT_SECRET);
+            return jwt.verify(token, secret);
         } catch {
             throw AppError.unauthorized('Invalid or expired token');
         }
@@ -141,11 +131,11 @@ class AuthService extends BaseService {
      * @returns {object} An object containing the user and new tokens
      */
     async refreshTokens(refreshToken) {
-        const decoded = this.verifyRefreshToken(refreshToken);
+        const decoded = this.verifyToken(refreshToken, JWT_REFRESH_SECRET);
         const user = await this.findById(decoded.id);
         if (!user) throw AppError.unauthorized('User not found');
 
-        const tokens = this.generateTokens(user._id);
+        const tokens = this.generateTokens(user);
         return {
             user,
             accessToken: tokens.accessToken,

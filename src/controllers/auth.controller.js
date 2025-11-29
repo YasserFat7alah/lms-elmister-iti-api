@@ -1,10 +1,16 @@
 import AppError from "../utils/app.error.js";
 import asyncHandler from "express-async-handler";
 import authService from "../services/auth.service.js";
-import { COOKIE_SETTINGS, IS_PRODUCTION, JWT_REFRESH_EXPIRE } from "../utils/constants.js";
+import mailService from "../services/mail.service.js";
+import { COOKIE_SETTINGS } from "../utils/constants.js";
 
 
 class AuthController {
+
+    constructor(authService, mailService) {
+        this.authService = authService;
+        this.mailService = mailService;
+    }
 
 /* --- --- --- AUTH CONTROLLER --- --- --- */    
 
@@ -16,7 +22,9 @@ class AuthController {
         const data = req.body;
         if (!data) throw AppError.badRequest('Request body is missing');
 
-        const { accessToken, refreshToken, user } = await authService.register(data);
+        const { accessToken, refreshToken, user } = await this.authService.register(data);
+
+        //await this.mailService.sendVerificationEmail(user.email, { name: user.name, token: verificationToken });
 
         //  Set the  REFRESH TOKEN in cookie
         this.setRefreshCookie(res, refreshToken);
@@ -39,7 +47,7 @@ class AuthController {
             throw AppError.badRequest('Email and password are required');
         }
 
-        const { accessToken, refreshToken, user } = await authService.login(email, password);
+        const { accessToken, refreshToken, user } = await this.authService.login(email, password);
         this.setRefreshCookie(res, refreshToken);
 
         res.status(200).json({
@@ -54,9 +62,15 @@ class AuthController {
      * @access Public
      */
     logout = asyncHandler(async (req, res) => {
+        const token = req.cookies?.refreshToken;
+        if (token) {
+            await this.authService.logout(token);
+        }
+
         res.clearCookie('refreshToken', COOKIE_SETTINGS);
 
         res.status(200).json({
+            success: true,
             message: 'Logged out successfully',
         });
     });
@@ -75,7 +89,7 @@ class AuthController {
             throw AppError.badRequest('Current password and new password are required');
         }
 
-        await authService.changePassword(userId, currentPassword, newPassword);
+        await this.authService.changePassword(userId, currentPassword, newPassword);
 
         res.status(200).json({
             success: true,
@@ -92,7 +106,7 @@ class AuthController {
         if (!email) {
             throw AppError.badRequest('Email is required');
         }
-        await mailService.initiatePasswordReset(email);
+        await this.mailService.initiatePasswordReset(email);
 
         res.status(200).json({
             success: true,
@@ -110,7 +124,7 @@ class AuthController {
             throw AppError.badRequest('Email, OTP, and new password are required');
         }
 
-        await authService.resetPassword(email, otp, newPassword);
+        await this.authService.resetPassword(email, otp, newPassword);
 
         res.status(200).json({
             success: true,
@@ -118,13 +132,17 @@ class AuthController {
         });
     });
 
+    /** Refresh access and refresh tokens
+     * @route POST /api/v1/auth/refresh-token
+     * @access Public
+     */
     refreshToken = asyncHandler(async (req, res) => {
         const oldRefreshToken = req.cookies.refreshToken;
         if (!oldRefreshToken) {
             throw AppError.unauthorized('Refresh token not found');
         }
 
-        const { accessToken, refreshToken: newRefreshToken, user } = await authService.refreshTokens(oldRefreshToken);
+        const { accessToken, refreshToken: newRefreshToken, user } = await this.authService.refreshTokens(oldRefreshToken);
 
         this.setRefreshCookie(res, newRefreshToken);
         res.status(200).json({
@@ -132,6 +150,40 @@ class AuthController {
             message: 'Token refreshed successfully',
             data: { user, accessToken },
         });
+    });
+
+    /** Verify email
+     * @route POST /api/v1/auth/verify-email
+     * @access Public
+     */
+    verifyEmail = asyncHandler(async (req, res) => {
+    const { token } = req.body;
+    if (!token) throw AppError.badRequest('Verification token is required');
+
+    const user = await this.authService.verifyEmailToken(token);
+
+    res.status(200).json({ 
+        success:true,
+        message: 'Email verified',
+        data: { user } });
+    });
+
+    /** Resend verification
+     * @route POST /api/v1/auth/resend-verification
+     * @access Public (rate-limited)
+     */
+    resendVerification = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    if (!email) throw AppError.badRequest('Email is required');
+
+    const user = await this.authService.findByEmail(email);
+    if (!user) throw AppError.notFound('User not found');
+    if (user.isVerified) return res.status(400).json({ success:false, message: 'Email already verified' });
+
+    const token = await this.authService.generateEmailVerificationToken(user._id);
+    await this.mailService.sendVerificationEmail(email, { name: user.name, token });
+
+    res.status(200).json({ success:true, message: 'Verification email sent' });
     });
 
 /* --- --- --- HELPERS --- --- --- */
@@ -146,4 +198,4 @@ class AuthController {
 
 }
 
-export default new AuthController();
+export default new AuthController(authService, mailService);

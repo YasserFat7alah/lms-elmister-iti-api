@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import e from 'express';
 dotenv.config();
 
 /* --- --- --- ENVIRONMENT VARIABLES --- --- --- */
@@ -13,7 +14,9 @@ export const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/lms
 // ===> Security
 export const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 export const JWT_ACCESS_EXPIRE = process.env.JWT_ACCESS_EXPIRE || '15m';
-export const JWT_REFRESH_EXPIRE = +process.env.JWT_REFRESH_EXPIRE || 7 * 24 * 60 * 60 * 1000;
+
+export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_jwt_refresh_secret_key';
+export const JWT_REFRESH_EXPIRE = 30 * 24 * 60 * 60 * 1000;
 
 // ===> Third-Party Services
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
@@ -43,6 +46,6 @@ export const GRADE_LEVELS = [
 export const COOKIE_SETTINGS = {
     httpOnly: true,
     secure: IS_PRODUCTION,
-    sameSite: 'Lax',
+    sameSite: IS_PRODUCTION ? 'none' : 'Lax',
     maxAge: JWT_REFRESH_EXPIRE,
 };
