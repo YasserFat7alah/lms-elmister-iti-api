@@ -37,8 +37,6 @@ class CourseService extends BaseService {
      */
     async updateById(_id, data, thumbnailFile) {
         const course = await super.findById(_id);
-        if(!course) 
-            throw new AppError.notFound("Course not found");
 
         let thumbnail = course.thumbnail;
 

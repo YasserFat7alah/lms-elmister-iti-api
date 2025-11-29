@@ -1,4 +1,6 @@
-import BaseService from "./base.service";
+import User from "../models/User.js";
+import BaseService from "./base.service.js";
+import cloudinaryService from "./cloudinary.service.js";
 
 
 
@@ -18,9 +20,39 @@ class UserService extends BaseService {
         return user;
     }
 
+    async uploadAvatar(userId, file) {
+        let user = await this.findById(userId);
+        let avatar = user.avatar || null;
+        if (file) {
+            if (avatar) 
+                await cloudinaryService.delete(avatar.publicId, avatar.type);
+
+            const uploadResult = await cloudinaryService.upload(file, "users/avatars/");
+            avatar = {
+                ...uploadResult
+            };
+        }
+        return avatar;
+    }
+
+    /** Update user profile
+     * @param {string} userId - The ID of the user
+     * @param {object} payload - The profile data to update 
+     * @returns {object} The updated user profile
+     * @throws {AppError} If no valid fields are provided or user is not found
+     */
+    async updateMe(userId, data = {}, avatarFile = null) {
+
+        if (avatarFile) {
+            const avatar = await this.uploadAvatar(userId, avatarFile);
+            data.avatar = avatar;  
+        }
     
-
-
+        const updatedUser = await this.updateById(userId, data);
+    
+    return this.sanitize(updatedUser);
+  }
+    
 /* --- --- --- PASSWORD MANAGEMENT --- --- --- */
 
     /** Change password for a user
@@ -40,7 +72,6 @@ class UserService extends BaseService {
         await user.save();
     }
 
-
 }
 
-export default new UserService();
+export default new UserService(User);
