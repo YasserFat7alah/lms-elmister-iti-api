@@ -61,6 +61,28 @@ class AuthController {
         });
     });
 
+    /* --- --- --- PASSWORD MANAGEMENT --- --- --- */
+
+    /** Change password for authenticated user
+     * @route POST /api/v1/auth/change-password
+     * @access Private
+     */
+    changePassword = asyncHandler(async (req, res) => {
+        const userId = req.user.id;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            throw AppError.badRequest('Current password and new password are required');
+        }
+
+        await authService.changePassword(userId, currentPassword, newPassword);
+
+        res.status(200).json({
+            success: true,
+            message: 'Password changed successfully',
+        });
+    });
+
     /** Forgot password - initiate password reset
      * @route POST /api/v1/auth/forgot-password
      * @access Public
@@ -75,6 +97,24 @@ class AuthController {
         res.status(200).json({
             success: true,
             message: 'Password reset initiated. Please check your email for further instructions.',
+        });
+    });
+
+    /** reset password using OTP
+     * @route POST /api/v1/auth/reset-password
+     * @access Public
+     */
+    resetPassword = asyncHandler(async (req, res) => {
+        const { email, otp, newPassword } = req.body;
+        if (!email || !otp || !newPassword) {
+            throw AppError.badRequest('Email, OTP, and new password are required');
+        }
+
+        await authService.resetPassword(email, otp, newPassword);
+
+        res.status(200).json({
+            success: true,
+            message: 'Password reset successful',
         });
     });
 

@@ -19,6 +19,17 @@ export const JWT_REFRESH_EXPIRE = +process.env.JWT_REFRESH_EXPIRE || 7 * 24 * 60
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 export const CLOUDINARY_URL = process.env.CLOUDINARY_URL;
 
+export const NODEMAILER_CONFIG = {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+};
+export const FROM_EMAIL = process.env.FROM_EMAIL || `"Elmister" <${process.env.SMTP_USER}>`;
+
 // ===> Client
 export const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 

@@ -120,6 +120,22 @@ class AuthService extends BaseService {
         };
     }
 
+    /** Change User Password
+     * @param {string} userId - The ID of the user
+     * @param {string} currentPassword - The current password
+     * @param {string} newPassword - The new password
+     */
+    async changePassword(userId, currentPassword, newPassword) {
+        const user = await this.model.findById(userId).select('+password');
+        if (!user)  throw AppError.notFound('User not found');
+
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch)  throw AppError.unauthorized('Current password is incorrect');
+
+        user.password = newPassword;
+        await user.save();
+    } 
+
     /** Refresh Access and Refresh Tokens
      * @param {string} refreshToken - The refresh token
      * @returns {object} An object containing the user and new tokens

@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import bcrypt from 'bcryptjs';
-import { GRADE_LEVELS } from "../utils/constants.js";
 
 const userSchema = new mongoose.Schema({
     name: {
