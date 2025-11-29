@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import bycrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import BaseService from './base.service.js';
@@ -36,20 +36,37 @@ class AuthService extends BaseService {
         }
     }
 
-    async register(email, password, role) {
+    async register(userData) {
+        const { email } = userData;
         // Check if user exists
-        const existingUser = await this.findOne({ email });
+        const existingUser = await this.model.findOne({ email });
         if (existingUser) {
             throw ApiError.conflict('Email already in use.');
         }
-
+        const allowedFields = [
+            "name",
+            "email",
+            "password",
+            "age",
+            "role",
+            "gradeLevel",
+            "parentId",
+            "specialization",
+            "phone",
+        ];
+        const data = {};
+        for (const key of allowedFields) {
+            if (userData[key] !== undefined) {
+                data[key] = userData[key];
+            }
+        }
         //create user
-        const newUser = await this.create({ email, password, role });
+        const newUser = await this.create(data);
         //generate tokens
         const { accessToken, refreshToken } = this.generateTokens(newUser._id);
 
         return {
-            user: this.sanitizeUser(newUser),
+            user: this.sanitize(newUser),
             accessToken,
             refreshToken
         };
@@ -67,7 +84,7 @@ class AuthService extends BaseService {
         }
         const { accessToken, refreshToken } = this.generateTokens(user._id);
         return {
-            user: this.sanitizeUser(user),
+            user: this.sanitize(user),
             accessToken,
             refreshToken
         };
@@ -83,11 +100,6 @@ class AuthService extends BaseService {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
         };
-    }
-        sanitizeUser(user) {
-        const obj = user.toObject ? user.toObject() : user;
-        const { password, __v, _id,...safe } = obj;
-        return { id: _id, ...safe };
     }
 }
 

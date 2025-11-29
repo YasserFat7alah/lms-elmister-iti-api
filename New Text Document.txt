@@ -1,0 +1,136 @@
+ import { createSlice } from @reduxjstoolkit;
+
+ const initialState = {
+   currentStep 1,  الخطوة الحالية في الويزارد (1 الأساسيات، 2 المنهج، 3 الميديا، 4 النشر)
+   courseData {
+     title ,
+     subtitle ,
+     description ,
+     category ,
+     level Beginner,  Beginner, Intermediate, Advanced
+     price ,
+     thumbnail null,  رابط الصورة بعد الرفع
+     videoTrailer null,  رابط الفيديو التشويقي
+     modules [],  مصفوفة الأقسام { id 1, title Introduction, lessons [] }
+   },
+   isDirty false,  هل تم تعديل البيانات (عشان تحذير الخروج)
+ };
+
+ const builderSlice = createSlice({
+   name builder,
+   initialState,
+   reducers {
+      1. تحديث البيانات الأساسية (Title, Price, etc.)
+     updateCourseField (state, action) = {
+       const { field, value } = action.payload;
+       state.courseData[field] = value;
+       state.isDirty = true;
+     },
+
+      2. التحكم في الخطوات (Next  Back)
+     setStep (state, action) = {
+       state.currentStep = action.payload;
+     },
+     nextStep (state) = {
+       state.currentStep += 1;
+     },
+     prevStep (state) = {
+       if (state.currentStep  1) state.currentStep -= 1;
+     },
+
+      3. إدارة المنهج (Curriculum Management)
+    
+      إضافة قسم جديد (Module)
+     addModule (state) = {
+       const newModule = {
+         id Date.now().toString(),  ID مؤقت
+         title New Section,
+         lessons [],
+       };
+       state.courseData.modules.push(newModule);
+       state.isDirty = true;
+     },
+
+      تحديث اسم القسم
+     updateModuleTitle (state, action) = {
+       const { moduleId, title } = action.payload;
+       const module = state.courseData.modules.find((m) = m.id === moduleId);
+       if (module) module.title = title;
+       state.isDirty = true;
+     },
+
+      حذف قسم
+     deleteModule (state, action) = {
+       state.courseData.modules = state.courseData.modules.filter(
+         (m) = m.id !== action.payload
+       );
+       state.isDirty = true;
+     },
+
+      إضافة درس داخل قسم معين
+     addLesson (state, action) = {
+       const { moduleId } = action.payload;
+       const module = state.courseData.modules.find((m) = m.id === moduleId);
+       if (module) {
+         module.lessons.push({
+           id Date.now().toString(),
+           title New Lesson,
+           type video,  video, quiz, text
+           content null,
+           isFree false,
+         });
+       }
+       state.isDirty = true;
+     },
+
+      تحديث بيانات درس (الاسم، النوع، المحتوى)
+     updateLesson (state, action) = {
+       const { moduleId, lessonId, updates } = action.payload;
+       const module = state.courseData.modules.find((m) = m.id === moduleId);
+       if (module) {
+         const lesson = module.lessons.find((l) = l.id === lessonId);
+         if (lesson) {
+           Object.assign(lesson, updates);
+         }
+       }
+       state.isDirty = true;
+     },
+
+      حذف درس
+     deleteLesson (state, action) = {
+       const { moduleId, lessonId } = action.payload;
+       const module = state.courseData.modules.find((m) = m.id === moduleId);
+       if (module) {
+         module.lessons = module.lessons.filter((l) = l.id !== lessonId);
+       }
+       state.isDirty = true;
+     },
+
+      4. إعادة تعيين البناء (عند الانتهاء أو الإلغاء)
+     resetBuilder (state) = {
+       state.currentStep = 1;
+       state.courseData = initialState.courseData;
+       state.isDirty = false;
+     },
+   },
+ });
+
+ export const {
+   updateCourseField,
+   setStep,
+   nextStep,
+   prevStep,
+   addModule,
+   updateModuleTitle,
+   deleteModule,
+   addLesson,
+   updateLesson,
+   deleteLesson,
+   resetBuilder,
+ } = builderSlice.actions;
+
+  Selectors (لسهولة الاستدعاء في الكومبوننت)
+ export const selectCourseData = (state) = state.builder.courseData;
+ export const selectCurrentStep = (state) = state.builder.currentStep;
+
+ export default builderSlice.reducer;
