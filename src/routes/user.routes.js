@@ -11,7 +11,7 @@ const { getMe, updateMe, uploadAvatar } =  userController;
 const { authenticate, authorize } = authMiddleware
 
 router.get('/me', authenticate, getMe);
-router.put('/me', authenticate, updateMe);
+router.put('/me', authenticate, upload.single('avatar'), updateMe);
 router.post('/me/avatar', authenticate, upload.single('avatar'), uploadAvatar);
 
 

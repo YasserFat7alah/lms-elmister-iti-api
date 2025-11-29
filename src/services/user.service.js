@@ -20,14 +20,14 @@ class UserService extends BaseService {
         return user;
     }
 
-    async uploadAvatar(userId, file) {
+    async uploadAvatar(userId, avatarFile) {
         let user = await this.findById(userId);
         let avatar = user.avatar || null;
-        if (file) {
+        if (avatarFile) {
             if (avatar) 
                 await cloudinaryService.delete(avatar.publicId, avatar.type);
 
-            const uploadResult = await cloudinaryService.upload(file, "users/avatars/");
+            const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/");
             avatar = {
                 ...uploadResult
             };
@@ -41,14 +41,21 @@ class UserService extends BaseService {
      * @returns {object} The updated user profile
      * @throws {AppError} If no valid fields are provided or user is not found
      */
-    async updateMe(userId, data = {}, avatarFile = null) {
+    async updateMe(userId, data = {}, avatarFile) {
+        const user = await super.findById(userId);
+        let avatar = user.avatar;
 
         if (avatarFile) {
-            const avatar = await this.uploadAvatar(userId, avatarFile);
-            data.avatar = avatar;  
+            if (avatar?.publicId) { 
+                await cloudinaryService.delete(avatar.publicId, avatar.type);
+            }
+            const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/");
+            avatar = {
+                ...uploadResult
+            };
         }
     
-        const updatedUser = await this.updateById(userId, data);
+        const updatedUser = await this.updateById(userId, { ...data, avatar }, { new: true });
     
     return this.sanitize(updatedUser);
   }
