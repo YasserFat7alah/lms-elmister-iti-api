@@ -1,13 +1,9 @@
 import cloudinary from "../config/cloudinary.js";
 
 class CloudinaryService {
-
-  /** Convert Multer file buffer to Data URI
-   * @param {Object} file - Multer file object
-   */
-  toDataUri(file) {
-    const base64 = file.buffer.toString("base64");
-    return `data:${file.mimetype};base64,${base64}`;
+  
+  constructor(cloudinaryInstance) {
+    this.cloudinary = cloudinaryInstance;
   }
 
   /** Upload ANY file (image, video, PDF, docs, audio)
@@ -20,7 +16,7 @@ class CloudinaryService {
 
     const dataUri = this.toDataUri(file);
 
-    const result = await cloudinary.uploader.upload(dataUri, {
+    const result = await this.cloudinary.uploader.upload(dataUri, {
       folder,
       resource_type: "auto",  // auto-detect image, video, raw (PDF)
       ...options,
@@ -33,15 +29,22 @@ class CloudinaryService {
     };
   }
 
-  /**
-   * Delete Cloudinary file
+  /** Delete Cloudinary file
    * @param {string} publicId - ID of the asset
    */
   async delete(publicId) {
-    return cloudinary.uploader.destroy(publicId, {
+    return this.cloudinary.uploader.destroy(publicId, {
       resource_type: "auto",
     });
   }
+
+   /** Convert Multer file buffer to Data URI
+   * @param {Object} file - Multer file object
+   */
+  toDataUri(file) {
+    const base64 = file.buffer.toString("base64");
+    return `data:${file.mimetype};base64,${base64}`;
+  }
 }
 
-export default new CloudinaryService();
+export default new CloudinaryService(cloudinary);

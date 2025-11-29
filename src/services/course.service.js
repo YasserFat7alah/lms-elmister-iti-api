@@ -5,7 +5,7 @@ import AppError from "../utils/app.error.js";
 
 class CourseService extends BaseService {
 
-    constructor() {
+    constructor(Course) {
         super(Course);
     }
 
@@ -73,5 +73,5 @@ class CourseService extends BaseService {
     }
 }
 
-export default new CourseService();
+export default new CourseService(Course);
 
