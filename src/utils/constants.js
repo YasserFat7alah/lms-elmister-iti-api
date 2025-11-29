@@ -7,13 +7,13 @@ export const ENVIRONMENT = process.env.NODE_ENV || 'development'; // 'developmen
 export const IS_PRODUCTION = ENVIRONMENT === 'production';
 
 // ===> App
-export const PORT = process.env.PORT || 5000;
-export const MONGO_URI = process.env.MONGO_URI;
+export const PORT = process.env.PORT || 4040;
+export const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/lms-elmister';
 
 // ===> Security
 export const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 export const JWT_ACCESS_EXPIRE = process.env.JWT_ACCESS_EXPIRE || '15m';
-export const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '7d';
+export const JWT_REFRESH_EXPIRE = +process.env.JWT_REFRESH_EXPIRE || 7 * 24 * 60 * 60 * 1000;
 
 // ===> Third-Party Services
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;

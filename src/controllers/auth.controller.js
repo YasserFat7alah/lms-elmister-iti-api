@@ -13,12 +13,10 @@ class AuthController {
      * @access Public
      */
     register = asyncHandler(async (req, res) => {
-        const { name, email, password, role, age } = req.body;
-        if (!name || !email || !password || !role || !age) {
-            throw AppError.badRequest('Name, email, and password are required');
-        }
+        const data = req.body;
+        if (!data) throw AppError.badRequest('Request body is missing');
 
-        const { accessToken, refreshToken, user } = await authService.register(req.body);
+        const { accessToken, refreshToken, user } = await authService.register(data);
 
         //  Set the  REFRESH TOKEN in cookie
         this.setRefreshCookie(res, refreshToken);

@@ -21,7 +21,7 @@ export const registerSchema = joi.object({
         'number.min': 'Age must be at least 5 years old',
         'number.max': 'Age must be less than 80 years old'
     }),
-    role: joi.string().required().valid('teacher', 'parent', 'student').messages({
+    role: joi.string().required().valid('teacher', 'parent', 'student','admin' ).messages({
         'string.empty': 'Role is required',
         'any.required': 'Role is required',
         'string.valid': 'Role must be teacher, parent, or student'

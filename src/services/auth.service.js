@@ -86,7 +86,7 @@ class AuthService extends BaseService {
             }
         }
         //create user
-        const newUser = await this.create(data);
+        const newUser = await super.create(data);
         //generate tokens
         const { accessToken, refreshToken } = this.generateTokens(newUser._id);
 
