@@ -59,10 +59,18 @@ class UserService extends BaseService {
      * @throws {AppError} If no valid fields are provided or user is not found
      */
     async updateMe(userId, data = {}, avatarFile) {
+        const allowedFields = ['name', 'username', 'email', 'phone'];
         let avatar = null;
         if (avatarFile) {
             avatar = await this.uploadAvatar(userId, avatarFile);
         }
+
+        data = Object.keys(data)
+            .filter(key => allowedFields.includes(key))
+            .reduce((obj, key) => {
+                obj[key] = data[key];
+                return obj;
+            }, {});
     
         const updatedUser = await this.updateById(userId, { ...data, avatar }, { new: true });
     
