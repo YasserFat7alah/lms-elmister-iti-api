@@ -16,7 +16,14 @@ class MailService {
         text: text || body.replace(/<[^>]*>/g, ""), // Strip HTML for text version
       };
 
-      const info = await this.transporter.sendMail(mailOptions);
+      const info = await this.transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending email:", error);
+          throw new Error("Failed to send email");
+        } else {
+          console.log("Email sent:", info.response);
+        }
+      });
       return { success: true, messageId: info.messageId };
     }
 

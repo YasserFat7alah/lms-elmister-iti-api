@@ -23,6 +23,7 @@ export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 export const CLOUDINARY_URL = process.env.CLOUDINARY_URL;
 
 export const NODEMAILER_CONFIG = {
+    service: process.env.SMTP_SERVICE || 'gmail',
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
     secure: false, // true for 465, false for other ports
