@@ -79,7 +79,7 @@ export class AuthService extends BaseService {
         const newUser = await super.create(data);
         //generate tokens
         const { accessToken, refreshToken } = this.generateTokens(newUser._id);
-
+        
         return {
             user: this.sanitize(newUser),
             accessToken,
@@ -109,6 +109,7 @@ export class AuthService extends BaseService {
             refreshToken
         };
     }
+    
 
     /** Change User Password
      * @param {string} userId - The ID of the user
@@ -126,6 +127,18 @@ export class AuthService extends BaseService {
         await user.save();
     } 
 
+    /** Reset User Password
+     * @param {string} userId - The ID of the user
+     * @param {string} newPassword - The new password
+     */
+    async resetPassword(email, newPassword) {
+        const user = await this.model.findOne({ email }).select('+password');
+        if (!user)  throw AppError.notFound('User not found');
+
+        user.password = newPassword;
+        await user.save();
+    }
+
     /** Refresh Access and Refresh Tokens
      * @param {string} refreshToken - The refresh token
      * @returns {object} An object containing the user and new tokens
@@ -141,6 +154,21 @@ export class AuthService extends BaseService {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
         };
+    }
+
+    /** Set the refresh token cookie with appropriate options 
+     * @param {object} res - The Express response object
+     * @param {string} refreshToken - The refresh token to set in the cookie
+    */
+    setRefreshCookie(res, refreshToken) {
+        res.cookie('refreshToken', refreshToken, COOKIE_SETTINGS);
+    }
+
+    /** Clear the refresh token cookie
+     * @param {object} res - The Express response object
+    */
+    clearRefreshCookie(res) {
+        res.clearCookie('refreshToken', COOKIE_SETTINGS);
     }
 }
 

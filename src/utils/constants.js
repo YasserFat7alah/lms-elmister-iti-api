@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import e from 'express';
 dotenv.config();
 
 /* --- --- --- ENVIRONMENT VARIABLES --- --- --- */
@@ -16,23 +15,27 @@ export const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 export const JWT_ACCESS_EXPIRE = process.env.JWT_ACCESS_EXPIRE || '15m';
 
 export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_jwt_refresh_secret_key';
-export const JWT_REFRESH_EXPIRE = 30 * 24 * 60 * 60 * 1000;
+export const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '7d'
 
 // ===> Third-Party Services
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 export const CLOUDINARY_URL = process.env.CLOUDINARY_URL;
 
+// ===> Nodemailer Configuration
+export const SMTP_USER = process.env.SMTP_USER;
+export const SMTP_PASS = process.env.SMTP_PASS;
 export const NODEMAILER_CONFIG = {
     service: process.env.SMTP_SERVICE || 'gmail',
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
     secure: false, // true for 465, false for other ports
     auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: SMTP_USER,
+        pass: SMTP_PASS,
     },
 };
-export const FROM_EMAIL = process.env.FROM_EMAIL || `"Elmister" <${process.env.SMTP_USER}>`;
+
+export const SENDER_EMAIL = process.env.SENDER_EMAIL || SMTP_USER || '';
 
 // ===> Client
 export const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
@@ -47,6 +50,6 @@ export const GRADE_LEVELS = [
 export const COOKIE_SETTINGS = {
     httpOnly: true,
     secure: IS_PRODUCTION,
-    sameSite: IS_PRODUCTION ? 'none' : 'Lax',
-    maxAge: JWT_REFRESH_EXPIRE,
+    sameSite: IS_PRODUCTION ? 'none' : 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
 };

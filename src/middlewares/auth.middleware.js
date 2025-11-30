@@ -14,15 +14,17 @@ class AuthMW {
     authenticate = asyncHandler(async (req, res, next) => {
         let token = null;
 
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            token = req.headers.authorization.split(' ')[1];
-        } else if (req.cookies && req.cookies.refreshToken) {
+        if (req.cookies && req.cookies.refreshToken) {
             token = req.cookies.refreshToken;
-        }   
+        } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+            token = req.headers.authorization.split(' ')[1];
+        } else {
+            token = req.header.authorization;
+        } 
 
         if (!token) {
             res.status(401);
-            throw AppError.unauthorized('Not authorized, no token');
+            throw AppError.unauthorized('Not authorized, no token provided');
         }
 
         try {

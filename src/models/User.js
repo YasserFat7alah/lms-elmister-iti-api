@@ -50,7 +50,24 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",  
     }
-    ]
+    ],
+
+    emailVerified: {
+        type: Boolean,
+        default: false
+    },
+
+    resetOTP: {
+        type: String,
+        select: false,
+        default: null
+    },
+
+    resetOTPExpires: {
+        type: Number,
+        default: 0,
+        select: false
+    },
 
 }, { timestamps: true });
 

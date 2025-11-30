@@ -27,7 +27,7 @@ class AuthController {
         //await this.mailService.sendVerificationEmail(user.email, { name: user.name, token: verificationToken });
 
         //  Set the  REFRESH TOKEN in cookie
-        this.setRefreshCookie(res, refreshToken);
+        this.authServicesetRefreshCookie(res, refreshToken);
 
         //response with user and access token (body) >> maybe needs refactoring later
         res.status(201).json({
@@ -48,7 +48,7 @@ class AuthController {
         }
 
         const { accessToken, refreshToken, user } = await this.authService.login(email, password);
-        this.setRefreshCookie(res, refreshToken);
+        this.authService.setRefreshCookie(res, refreshToken);
 
         res.status(200).json({
             success: true,
@@ -63,11 +63,10 @@ class AuthController {
      */
     logout = asyncHandler(async (req, res) => {
         const token = req.cookies?.refreshToken;
-        if (token) {
-            await this.authService.logout(token);
-        }
 
-        res.clearCookie('refreshToken', COOKIE_SETTINGS);
+        if (token) {
+             this.authService.clearRefreshCookie(res);
+        }
 
         res.status(200).json({
             success: true,
@@ -102,11 +101,11 @@ class AuthController {
      * @access Public
      */
     forgotPassword = asyncHandler(async (req, res) => {
-        const { email } = req.body;
-        if (!email) {
-            throw AppError.badRequest('Email is required');
+        const { email, otp } = req.body;
+        if (!email || !otp) {
+            throw AppError.badRequest('Email and otp are required');
         }
-        await this.mailService.initiatePasswordReset(email);
+        await this.mailService.initiatePasswordReset(email, otp);
 
         res.status(200).json({
             success: true,
@@ -184,17 +183,7 @@ class AuthController {
     await this.mailService.sendVerificationEmail(email, { name: user.name, token });
 
     res.status(200).json({ success:true, message: 'Verification email sent' });
-    });
-
-/* --- --- --- HELPERS --- --- --- */
-
-    /** Set the refresh token cookie with appropriate options 
-     * @param {object} res - The Express response object
-     * @param {string} refreshToken - The refresh token to set in the cookie
-    */
-    setRefreshCookie(res, refreshToken) {
-        res.cookie('refreshToken', refreshToken, COOKIE_SETTINGS);
-    }
+    });  
 
 }
 
