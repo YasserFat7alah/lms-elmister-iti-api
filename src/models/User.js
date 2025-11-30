@@ -57,13 +57,13 @@ const userSchema = new mongoose.Schema({
         default: false
     },
 
-    resetOTP: {
+    otp: {
         type: String,
         select: false,
         default: null
     },
 
-    resetOTPExpires: {
+    otpExpiry: {
         type: Number,
         default: 0,
         select: false
@@ -72,10 +72,14 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {
+    console.log(this.password , "   before");
+    
     // Hash password if modified
     if (this.isModified('password')) {
-        this.password = await bcrypt.hash(this.password, 12);
+        this.password = await this.hashPassword(this.password);
     }
+
+    console.log(this.password , "   after");
 
     // Generate username
     if (!this.username) {
@@ -92,5 +96,10 @@ userSchema.pre('save', async function () {
 userSchema.methods.comparePassword = async function (password) {
     return await bcrypt.compare(password, this.password);
 };
+
+userSchema.methods.hashPassword = async function (password) {
+    return await bcrypt.hash(password, 12);
+}; 
+
 
 export default mongoose.model('User', userSchema);

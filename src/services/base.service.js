@@ -21,7 +21,7 @@ class BaseService {
         if (select) query.select(select);
         const result = await query;
         if (!result) {
-            throw AppError.notFound(`Resource not found.`);
+            throw AppError.notFound(`Resource not found. by filter: ${filter}`);
         }
         return result;
     }
@@ -71,6 +71,12 @@ class BaseService {
     async updateById(id, data) {
         this._validateId(id);
 
+        if(data.password) data.password = await this.model.hashPassword(data.password);
+
+        if (Object.keys(data).length === 0) {
+            throw AppError.badRequest("No valid fields provided for update.");
+        }
+
         const updated = await this.model.findByIdAndUpdate(
             id,
             data,
@@ -95,6 +101,20 @@ class BaseService {
             throw AppError.notFound(`Resource with id: ${id} not found.`);
         }
         return deleted;
+    }
+
+    /** Update password for a user
+     * @param {string} _id - The ID of the user
+     * @param {string} newPassword - The new password
+     */
+    async updatePassword(_id, newPassword) {
+        const user = await this.model.findById(_id).select("+password");
+        if(!user) throw AppError.notFound("User not found");
+        
+        user.password = newPassword;
+        const updated = await user.save();
+
+        return this.sanitize(updated);
     }
 
     /* --- --- --- STATISTICS --- --- --- */

@@ -101,10 +101,16 @@ class AuthController {
      * @access Public
      */
     forgotPassword = asyncHandler(async (req, res) => {
-        const { email, otp } = req.body;
-        if (!email || !otp) {
-            throw AppError.badRequest('Email and otp are required');
+        const { email } = req.body;
+        if (!email) {
+            throw AppError.badRequest('Email is required');
         }
+        const user = await this.authService.findOne({ email }, '+password');
+        
+        const { otp, otpExpiry } = this.authService.generateOTP(5);
+
+        await this.authService.updateById(user._id, { otp, otpExpiry });
+        
         await this.mailService.initiatePasswordReset(email, otp);
 
         res.status(200).json({

@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import AppError from "../utils/app.error.js";
 import BaseService from "./base.service.js";
 import cloudinaryService from "./cloudinary.service.js";
 
@@ -26,12 +27,18 @@ class UserService extends BaseService {
      * @returns {object} The uploaded avatar details
      */
     async uploadAvatar(userId, avatarFile) {
+        let avatar = null;
+        let user = await this.findById(userId);
+        avatar = user.avatar || null;
         
         if (avatarFile) {
-            if (avatar?.publicId) 
-                await cloudinaryService.delete(avatar.publicId, avatar.type);
 
             const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/");
+            
+            if (avatar.publicId && uploadResult.publicId) {
+                await cloudinaryService.delete(avatar.publicId, avatar.type);
+            }
+
             avatar = {
                 ...uploadResult
             };
@@ -65,14 +72,18 @@ class UserService extends BaseService {
             avatar = await this.uploadAvatar(userId, avatarFile);
         }
 
-        data = Object.keys(data)
-            .filter(key => allowedFields.includes(key))
-            .reduce((obj, key) => {
-                obj[key] = data[key];
-                return obj;
-            }, {});
+        let updated = {};
+        Object.keys(data).forEach((key) => {
+            if (allowedFields.includes(key)) {
+                updated[key] = data[key];
+            }
+        });
+        
+        if (Object.keys(updated).length === 0 && !avatar ) throw AppError.badRequest('No valid fields provided');
+
+
     
-        const updatedUser = await this.updateById(userId, { ...data, avatar }, { new: true });
+        const updatedUser = await this.updateById(userId, { ...updated, avatar }, { new: true });
     
     return this.sanitize(updatedUser);
   }
