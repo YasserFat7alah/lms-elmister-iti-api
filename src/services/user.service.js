@@ -20,11 +20,15 @@ class UserService extends BaseService {
         return user;
     }
 
+    /** Upload user avatar
+     * @param {string} userId - The ID of the user
+     * @param {object} avatarFile - The avatar file to upload
+     * @returns {object} The uploaded avatar details
+     */
     async uploadAvatar(userId, avatarFile) {
-        let user = await this.findById(userId);
-        let avatar = user.avatar || null;
+        
         if (avatarFile) {
-            if (avatar) 
+            if (avatar?.publicId) 
                 await cloudinaryService.delete(avatar.publicId, avatar.type);
 
             const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/");
@@ -35,6 +39,19 @@ class UserService extends BaseService {
         return avatar;
     }
 
+    /** delete user avatar
+     * @param {string} userId - The ID of the user
+     */
+    async deleteAvatar(userId) {
+        let user = await this.findById(userId);
+        let avatar = user.avatar || null;
+        if (avatar?.publicId) {
+            await cloudinaryService.delete(avatar.publicId, avatar.type);
+            avatar = null;
+            await this.updateById(userId, { avatar });
+        }
+    }
+
     /** Update user profile
      * @param {string} userId - The ID of the user
      * @param {object} payload - The profile data to update 
@@ -42,17 +59,9 @@ class UserService extends BaseService {
      * @throws {AppError} If no valid fields are provided or user is not found
      */
     async updateMe(userId, data = {}, avatarFile) {
-        const user = await super.findById(userId);
-        let avatar = user.avatar;
-
+        let avatar = null;
         if (avatarFile) {
-            if (avatar?.publicId) { 
-                await cloudinaryService.delete(avatar.publicId, avatar.type);
-            }
-            const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/");
-            avatar = {
-                ...uploadResult
-            };
+            avatar = await this.uploadAvatar(userId, avatarFile);
         }
     
         const updatedUser = await this.updateById(userId, { ...data, avatar }, { new: true });
