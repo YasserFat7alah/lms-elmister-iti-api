@@ -26,17 +26,23 @@ class UserService extends BaseService {
      * @returns {object} The uploaded avatar details
      */
     async uploadAvatar(userId, avatarFile) {
-        
+        const user = await this.findById(userId);
+        if (!user) throw new AppError('User not found', 404);
+
+        let newAvatarData = null; 
+
         if (avatarFile) {
-            if (avatar?.publicId) 
-                await cloudinaryService.delete(avatar.publicId, avatar.type);
+            if (user.avatar?.publicId) {
+                await cloudinaryService.delete(user.avatar.publicId, user.avatar.type);
+            }
 
             const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/");
-            avatar = {
+            
+            newAvatarData = {
                 ...uploadResult
             };
         }
-        return avatar;
+        return newAvatarData;
     }
 
     /** delete user avatar
@@ -59,23 +65,21 @@ class UserService extends BaseService {
      * @throws {AppError} If no valid fields are provided or user is not found
      */
     async updateMe(userId, data = {}, avatarFile) {
-        const allowedFields = ['name', 'username', 'email', 'phone'];
-        let avatar = null;
+        let newAvatar = null; 
         if (avatarFile) {
-            avatar = await this.uploadAvatar(userId, avatarFile);
+            newAvatar = await this.uploadAvatar(userId, avatarFile);
+        }
+    
+        const updatePayload = { ...data };
+        
+        if (newAvatar) {
+            updatePayload.avatar = newAvatar;
         }
 
-        data = Object.keys(data)
-            .filter(key => allowedFields.includes(key))
-            .reduce((obj, key) => {
-                obj[key] = data[key];
-                return obj;
-            }, {});
+        const updatedUser = await this.updateById(userId, updatePayload, { new: true });
     
-        const updatedUser = await this.updateById(userId, { ...data, avatar }, { new: true });
-    
-    return this.sanitize(updatedUser);
-  }
+        return this.sanitize(updatedUser);
+    }
     
 /* --- --- --- PASSWORD MANAGEMENT --- --- --- */
 
