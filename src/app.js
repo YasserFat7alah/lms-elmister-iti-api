@@ -6,6 +6,7 @@ import { CLIENT_URL } from "./utils/constants.js";
 import { authRouter } from "./routes/auth.routes.js";
 import courseRouter from "./routes/course.routes.js";
 import { userRouter } from "./routes/user.routes.js";
+import passport from "./config/passport/index.js";
 // import AppError from "./utils/AppError.js";
 
 const app = express();
@@ -14,6 +15,8 @@ const app = express();
 connectDB();
 
 /* --- --- --- MIDDLEWARES --- --- --- */
+app.use(passport.initialize());
+
 app.use(cors(
     {
         origin: CLIENT_URL,
@@ -32,9 +35,10 @@ app.get("/ping", (req, res) => { // health check endpoint
     res.json({ message: "pong" });
 });
 
-
-// app.all(/.*/, (req, res, next) => {
-// }
+/* --- --- --- FALLBACK --- --- --- */
+app.all("*", (req, res, next) => {
+    next(AppError.notFound());
+});
 
 /* --- --- --- ERROR HANDLER --- --- --- */
 app.use(errorHandler);

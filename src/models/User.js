@@ -2,17 +2,18 @@ import mongoose from "mongoose";
 import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
+/* --- --- --- Basic information --- --- --- */
     name: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
     },
 
     username: {
         type: String,
         trim: true,
         unique: true,
-        toLowerCase: true
+        lowercase: true
     },
 
     email: {
@@ -20,16 +21,9 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true,
         trim: true,
+        lowercase: true
     },
-
-    password: {
-        type: String,
-        required: true,
-        trim: true,
-        minlength: 8,
-        select: false
-    },
-
+    
     avatar: {
         url: { type: String },
         publicId: { type: String },
@@ -47,23 +41,55 @@ const userSchema = new mongoose.Schema({
         required: true
     },
 
-    children: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",  
-    }
-    ],
+/* --- --- --- Authentication information --- --- --- */
+    
+    password: {
+        type: String,
+        required: function() { return !this.provider || this.provider === 'local';},
+        trim: true,
+        minlength: 8,
+        select: false
+    },
+    
+    provider: {
+        type: String,
+        enum: ['local', 'google', 'facebook'],
+        default: 'local',
+        select: false
+    },
+
+    providerId: {
+        type: String,
+        select: false
+    },
+
+    linkedProviders: [{
+        provider: {
+            type: String,
+            enum: ['google', 'facebook'],
+        },
+
+        providerId: {
+            type: String
+        },
+
+        linkedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
 
     emailVerified: {
         type: Boolean,
         default: false
     },
-
+    
     otp: {
         type: String,
         select: false,
         default: null
     },
-
+    
     otpExpiry: {
         type: Number,
         default: 0,
@@ -76,7 +102,7 @@ userSchema.pre('save', async function () {
     console.log(this.password , "   before");
     
     // Hash password if modified
-    if (this.isModified('password')) {
+    if (this.isModified('password') && this.password) {
         this.password = await this.hashPassword(this.password);
     }
 
@@ -90,17 +116,23 @@ userSchema.pre('save', async function () {
         this.username = `${namePart}${shortTimestamp}`;
     }
 
+    // Auto-verify email for OAuth users
+    if (this.provider && this.provider !== 'local' && !this.emailVerified) {
+        this.emailVerified = true;
+    }
+
 });
 
+// Hash password
+userSchema.methods.hashPassword = async function (password) {
+    return await bcrypt.hash(password, 12);
+}; 
 
 // Compare password
 userSchema.methods.comparePassword = async function (password) {
     return await bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.hashPassword = async function (password) {
-    return await bcrypt.hash(password, 12);
-}; 
 
 
 export default mongoose.model('User', userSchema);

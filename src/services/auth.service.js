@@ -11,8 +11,8 @@ import {
 } from "../utils/constants.js";
 
 export class AuthService extends BaseService {
-  constructor(User) {
-    super(User);
+  constructor(userModel) {
+    super(userModel);
   }
 
   /* --- --- --- JWT --- --- --- */
@@ -88,7 +88,7 @@ export class AuthService extends BaseService {
     //create user
     const newUser = await super.create(data);
     //generate tokens
-    const { accessToken, refreshToken } = this.generateTokens(newUser._id);
+    const { accessToken, refreshToken } = this.generateTokens(newUser);
 
     return {
       user: this.sanitize(newUser),
@@ -112,7 +112,7 @@ export class AuthService extends BaseService {
     if (!isPasswordMatch) {
       throw AppError.unauthorized("Invalid email or password.");
     }
-    const { accessToken, refreshToken } = this.generateTokens(user._id);
+    const { accessToken, refreshToken } = this.generateTokens(user);
     return {
       user: this.sanitize(user),
       accessToken,
@@ -187,6 +187,149 @@ export class AuthService extends BaseService {
    */
   clearRefreshCookie(res) {
     res.clearCookie("refreshToken", COOKIE_SETTINGS);
+  }
+
+  /* --- --- --- Email Verification --- --- --- */
+
+  /** Verify email token
+   * @param {string} token - The verification token
+   * @returns {object} The user with verified email
+   */
+  async verifyEmailToken(token) {
+    const decoded = this.verifyToken(token, JWT_SECRET);
+    const user = await this.findById(decoded.id);
+    
+    if (user.emailVerified) {
+      throw AppError.badRequest("Email already verified");
+    }
+
+    user.emailVerified = true;
+    await user.save();
+    
+    return this.sanitize(user);
+  }
+
+  /* --- --- --- OAuth --- --- --- */
+
+  /** Handle Oauth login/registration
+   * @param {object} user - The user object from Passport
+   * @returns {object} An object containing the sanitized user and tokens
+   */
+  async handleOauthLogin({ provider, providerId, email, name, avatar }) {
+    if (!provider || !providerId || !email) {
+      throw AppError.unauthorized("OAuth authentication failed - missing data.");
+    }
+
+    // Try to find provider
+    let user = await this.model.findOne({
+      $or: [
+        { provider, providerId },
+        { 'linkedProviders.provider': provider, 'linkedProviders.providerId': providerId },
+      ],
+    });
+    
+    if (user) {
+    const tokens = this.generateTokens(user);
+    return {
+      user: this.sanitize(user),
+      ...tokens,
+    };
+  }
+
+    // check if email exists in database
+    user = await this.model.findOne({ email });
+    if (user){
+      const tokens = this.generateTokens(user);
+      const updated = await this.linkOAuthProvider(user._id.toString(), provider, providerId);
+      return {
+        user: this.sanitize(updated),
+        ...tokens,
+      }
+    };
+
+    user = await this.create({
+      provider,
+      providerId,
+      email,
+      name,
+      avatar,
+    });
+
+    const tokens = this.generateTokens(user);
+
+    return {
+      user: this.sanitize(user),
+      ...tokens,
+    };  
+  }
+
+  /** Link Oauth provider to existing account
+   * @param {string} userId - The ID of the user
+   * @param {string} provider - The OAuth provider name
+   * @param {string} providerId - The provider's user ID
+   * @returns {object} The updated user
+   */
+  async linkOAuthProvider(userId, provider, providerId) {
+    const user = await this.findById(userId);    
+
+    // Check if provider is already linked
+    const isLinked = user.linkedProviders?.some(lp => lp.provider === provider );
+    if (isLinked) throw AppError.conflict(`${provider} account is already linked`);
+    
+
+    // Check if another user has this provider ID
+    const existingUser = await this.model.findOne({
+      $or: [
+        { providerId, provider },
+        { "linkedProviders.providerId": providerId, "linkedProviders.provider": provider },
+      ],
+    });
+
+    if (existingUser && existingUser._id.toString() !== userId) {
+      throw AppError.conflict(`This ${provider} account is already linked to another user`);
+    }
+
+    // Add to linked providers
+    user.linkedProviders = user.linkedProviders || [];
+
+    user.linkedProviders.push({
+      provider,
+      providerId,
+      linkedAt: new Date(),
+    });
+
+    await user.save();
+    return this.sanitize(user);
+  }
+
+  /** Unlink Oauth provider from account
+   * @param {string} userId - The ID of the user
+   * @param {string} provider - The OAuth provider name
+   * @returns {object} The updated user
+   */
+  async unlinkOauthProvider(userId, provider) {
+    const user = await this.findById(userId)
+
+    if (user.provider === provider && !user.password) {
+      throw AppError.badRequest(
+        "Cannot unlink primary provider. Please set a password first."
+      );
+    }
+
+    if(!user.linkedProviders) return this.sanitize(user);
+    if(user.provider === provider) {
+      user.provider = null ;
+      user.providerId = null;
+      await user.save();
+    }
+
+    // Remove from linked providers
+    if (user.linkedProviders) {
+      user.linkedProviders = user.linkedProviders.filter( lp => lp.provider !== provider );
+      await user.save();
+    }
+
+    return this.sanitize(user);
   }
 
   /* --- --- --- Utilities --- --- --- */

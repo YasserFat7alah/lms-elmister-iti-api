@@ -2,7 +2,7 @@ import AppError from "../utils/app.error.js";
 import asyncHandler from "express-async-handler";
 import authService from "../services/auth.service.js";
 import mailService from "../services/mail.service.js";
-import { COOKIE_SETTINGS } from "../utils/constants.js";
+import { CLIENT_URL, COOKIE_SETTINGS } from "../utils/constants.js";
 
 
 class AuthController {
@@ -27,13 +27,14 @@ class AuthController {
         //await this.mailService.sendVerificationEmail(user.email, { name: user.name, token: verificationToken });
 
         //  Set the  REFRESH TOKEN in cookie
-        this.authServicesetRefreshCookie(res, refreshToken);
+        this.authService.setRefreshCookie(res, refreshToken);
 
         //response with user and access token (body) >> maybe needs refactoring later
         res.status(201).json({
             success: true,
             message: 'User registered successfully',
-            data: { user, accessToken },
+            user: this.authService.sanitize(user),
+            accessToken,
         });
     });
 
@@ -53,7 +54,8 @@ class AuthController {
         res.status(200).json({
             success: true,
             message: 'Login successful',
-            data: { user, accessToken },
+            user: this.authService.sanitize(user),
+            accessToken,
         });
     });
 
@@ -149,13 +151,115 @@ class AuthController {
 
         const { accessToken, refreshToken: newRefreshToken, user } = await this.authService.refreshTokens(oldRefreshToken);
 
-        this.setRefreshCookie(res, newRefreshToken);
+        this.authService.setRefreshCookie(res, newRefreshToken);
         res.status(200).json({
             success: true,
             message: 'Token refreshed successfully',
-            data: { user, accessToken },
+            user,
+            accessToken,
         });
     });
+
+    /* --- --- --- OAUTH CONTROLLERS --- --- --- */
+    
+    /** Google OAuth callback
+     * @route GET /api/v1/auth/google/callback
+     * @access Public
+     */
+    googleCallback = asyncHandler(async (req, res) => {
+        const user = req.user;
+        const fallbackURL = req.query.fallbackUrl || `${CLIENT_URL}/auth/login?error=oauth_failed`;
+        
+        if (!user) {
+            return res.redirect(fallbackURL);
+        }
+
+        const { accessToken, refreshToken } = await this.authService.handleOauthLogin(user);
+        this.authService.setRefreshCookie(res, refreshToken);
+
+        // Redirect to frontend with token (or use a different approach)
+        const redirectUrl = `${CLIENT_URL || 'http://localhost:3000'}/auth/callback?token=${accessToken}`;
+        res.redirect(redirectUrl);
+    });
+
+    /** Link OAuth provider to existing account
+     * @route POST /api/v1/auth/link-provider
+     * @access Private
+     */
+    linkProvider = asyncHandler(async (req, res) => {
+        const userId = req.user.id;
+        const { provider, providerId } = req.body;
+
+        if (!provider || !providerId) {
+            throw AppError.badRequest('Provider and providerId are required');
+        }
+
+        const user = await this.authService.linkOAuthProvider(userId, provider, providerId);
+
+        res.status(200).json({
+            success: true,
+            message: `${provider} account linked successfully`,
+            user,
+        });
+    });
+
+    /** Unlink OAuth provider from account
+     * @route POST /api/v1/auth/unlink-provider
+     * @access Private
+     */
+    unlinkProvider = asyncHandler(async (req, res) => {
+        const userId = req.user.id;
+        const { provider } = req.body;
+
+        if (!provider) {
+            throw AppError.badRequest('Provider is required');
+        }
+
+        const user = await this.authService.unlinkOAuthProvider(userId, provider);
+
+        res.status(200).json({
+            success: true,
+            message: `${provider} account unlinked successfully`,
+            user,
+        });
+    });
+
+    /** Complete user profile
+     * @route POST /api/v1/auth/complete-profile
+     * @access Private
+     */
+    completeProfile = asyncHandler(async (req, res) => {
+        const userId = req.user.id;
+        const data = req.body;
+
+        // Get allowed fields for profile completion
+        const allowedFields = [
+            'name',
+            'phone',
+            'role',
+            'gradeLevel',
+            'specialization',
+            'age',
+            'parentId',
+        ];
+
+        const updateData = {};
+        for (const key of allowedFields) {
+            if (data[key] !== undefined) {
+                updateData[key] = data[key];
+            }
+        }
+
+        const user = await this.authService.updateById(userId, updateData);
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile completed successfully',
+            user: this.authService.sanitize(user),
+        });
+    });
+
+    /* --- --- --- EMAIL VERIFICATION --- --- --- */
 
     /** Verify email
      * @route POST /api/v1/auth/verify-email
@@ -170,7 +274,7 @@ class AuthController {
     res.status(200).json({ 
         success:true,
         message: 'Email verified',
-        data: { user } });
+        user: this.authService.sanitize(user) });
     });
 
     /** Resend verification
@@ -181,11 +285,11 @@ class AuthController {
     const { email } = req.body;
     if (!email) throw AppError.badRequest('Email is required');
 
-    const user = await this.authService.findByEmail(email);
+    const user = await this.authService.findOne({email}, '+emailVerified');
     if (!user) throw AppError.notFound('User not found');
-    if (user.isVerified) return res.status(400).json({ success:false, message: 'Email already verified' });
+    if (user.emailVerified) return res.status(400).json({ success:false, message: 'Email already verified' });
 
-    const token = await this.authService.generateEmailVerificationToken(user._id);
+    const token = await this.authService.generateToken(user._id);
     await this.mailService.sendVerificationEmail(email, { name: user.name, token });
 
     res.status(200).json({ success:true, message: 'Verification email sent' });

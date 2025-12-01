@@ -9,6 +9,8 @@ export const IS_PRODUCTION = ENVIRONMENT === 'production';
 // ===> App
 export const PORT = process.env.PORT || 4040;
 export const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/lms-elmister';
+export const SERVER_URL = process.env.SERVER_URL || `http://localhost:${PORT}`;
+export const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
 // ===> Security
 export const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
@@ -16,6 +18,10 @@ export const JWT_ACCESS_EXPIRE = process.env.JWT_ACCESS_EXPIRE || '15m';
 
 export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_jwt_refresh_secret_key';
 export const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '7d'
+
+// ===> OAuth
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // ===> Third-Party Services
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
@@ -36,9 +42,6 @@ export const NODEMAILER_CONFIG = {
 };
 
 export const SENDER_EMAIL = process.env.SENDER_EMAIL || SMTP_USER || '';
-
-// ===> Client
-export const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
 // ===> Application Constants
 export const GRADE_LEVELS = [

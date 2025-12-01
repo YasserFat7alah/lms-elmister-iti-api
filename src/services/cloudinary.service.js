@@ -1,6 +1,11 @@
 import cloudinary from "../config/cloudinary.js";
 
-class CloudinaryService {
+/** Cloudinary service
+ * @class CloudinaryService
+ * @description Handles Cloudinary uploads and deletions
+ * @constructor Cloudinary Instance
+ */ 
+export class CloudinaryService {
   
   constructor(cloudinaryInstance) {
     this.cloudinary = cloudinaryInstance;
