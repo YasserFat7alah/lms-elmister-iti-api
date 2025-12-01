@@ -36,7 +36,7 @@ app.get("/ping", (req, res) => { // health check endpoint
 });
 
 /* --- --- --- FALLBACK --- --- --- */
-app.all("*", (req, res, next) => {
+app.use((req, res, next) => {
     next(AppError.notFound());
 });
 
