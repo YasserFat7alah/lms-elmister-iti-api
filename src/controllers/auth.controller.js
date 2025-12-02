@@ -167,14 +167,14 @@ class AuthController {
      * @access Public
      */
     googleCallback = asyncHandler(async (req, res) => {
-        const user = req.user;
+        const oauthData = req.user;
         const fallbackURL = req.query.fallbackUrl || `${CLIENT_URL}/auth/login?error=oauth_failed`;
         
-        if (!user) {
+        if (!oauthData || !oauthData.provider || !oauthData.providerId || !oauthData.email) {
             return res.redirect(fallbackURL);
         }
 
-        const { accessToken, refreshToken } = await this.authService.handleOauthLogin(user);
+        const { accessToken, refreshToken, user } = await this.authService.handleOauthLogin(oauthData);
         this.authService.setRefreshCookie(res, refreshToken);
 
         // Redirect to frontend with token (or use a different approach)
