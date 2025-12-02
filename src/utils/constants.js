@@ -34,7 +34,7 @@ export const NODEMAILER_CONFIG = {
     service: process.env.SMTP_SERVICE || 'gmail',
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: false, // true for 465, false for other ports
+    secure: (process.env.SMTP_PORT === '465'), // true for 465, false for other ports
     auth: {
         user: SMTP_USER,
         pass: SMTP_PASS,
