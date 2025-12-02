@@ -1,6 +1,6 @@
 import multer from "multer";
 
-class MulterUploader {
+export class MulterUploader {
     constructor() {
         this.storage = multer.memoryStorage();
         this.fileFilter = (req, file, cb) => {
@@ -45,5 +45,4 @@ class MulterUploader {
     }
 }
 
-const multerMiddleware = new MulterUploader();
-export default multerMiddleware;
+export default new MulterUploader();

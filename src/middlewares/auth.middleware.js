@@ -4,7 +4,7 @@ import rateLimit from 'express-rate-limit';
 import User from '../models/User.js';
 import AppError from '../utils/app.error.js';
 
-class AuthMW {
+export class AuthMW {
     
     /** Authenticate user by verifying JWT token
      * @param {object} req - Express request object

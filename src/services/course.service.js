@@ -3,7 +3,7 @@ import BaseService from "./base.service.js";
 import cloudinaryService from "./cloudinary.service.js";
 import AppError from "../utils/app.error.js";
 
-class CourseService extends BaseService {
+export class CourseService extends BaseService {
 
     constructor(Course) {
         super(Course);

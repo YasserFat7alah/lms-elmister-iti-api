@@ -2,7 +2,7 @@ import transporter from "../config/nodemailer.js";
 import { SENDER_EMAIL } from "../utils/constants.js";
 import MailTemplates from "../utils/mail.templates.js";
 
-class MailService {
+export class MailService {
   constructor(transporter) {
     this.transporter = transporter;
   }

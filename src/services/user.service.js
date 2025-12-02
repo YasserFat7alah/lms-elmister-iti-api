@@ -5,7 +5,7 @@ import cloudinaryService from "./cloudinary.service.js";
 
 
 
-class UserService extends BaseService {
+export class UserService extends BaseService {
     constructor(User) {
         super(User);
     }
