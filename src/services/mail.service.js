@@ -25,16 +25,18 @@ export class MailService {
       text: text || body.replace(/<[^>]*>/g, ""),
     };
 
-    const info = await this.transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error("Error sending email:", error);
-        throw new Error("Failed to send email");
-      } else {
-        console.log("Email sent:", info.response);
-        return info;
-      }
+    const info = await new Promise((resolve, reject) => {
+      this.transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending email:", error);
+          reject(error);
+        } else {
+          console.log("Email sent:", info.response);
+          resolve(info);
+        }
+      });
     });
-    return { success: true, info};
+    return info;
   }
 
   /** Password OTP Mail
