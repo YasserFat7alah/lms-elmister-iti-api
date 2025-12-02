@@ -6,6 +6,7 @@ import { CLIENT_URL } from "./utils/constants.js";
 import { authRouter } from "./routes/auth.routes.js";
 import courseRouter from "./routes/course.routes.js";
 import { userRouter } from "./routes/user.routes.js";
+import cookieParser from "cookie-parser";
 // import AppError from "./utils/AppError.js";
 
 const app = express();
@@ -15,13 +16,14 @@ connectDB();
 
 /* --- --- --- MIDDLEWARES --- --- --- */
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000', // or '*' for dev
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],
   credentials: true, // if sending cookies
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser())
 
 /* --- --- --- END POINTS --- --- --- */
 app.use("/api/v1/auth",authRouter);
