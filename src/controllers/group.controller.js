@@ -1,9 +1,9 @@
 import asyncHandler from "express-async-handler";
-import AppError from "../utils/app.error";
+import AppError from "../utils/app.error.js";
 
 class GroupController {
     constructor(groupService) {
-        this.groupService = groupService; 
+        this.groupService = groupService;
     }
 
     /**
@@ -25,7 +25,8 @@ class GroupController {
      * @route Get /api/v1/groups
     */
     getAllGroups = asyncHandler(async (req, res) => {
-        const data = await this.groupService.getGroups(req.query);
+        const { page, limit, ...filters } = req.query;
+        const data = await this.groupService.getGroups(filters, { page, limit });
 
         res.status(200).json({
             success: true,
@@ -55,7 +56,12 @@ class GroupController {
     */
     updateGroupById = asyncHandler(async (req, res) => {
         const { id } = req.params;
-        const updatedGroup = await this.groupService.updateGroupById(id, req.body);
+        const updatedGroup = await this.groupService.updateGroupById(
+            id,
+            req.body,
+            req.user._id,
+            req.user.role
+        );
         res.status(200).json({
             success: true,
             data: updatedGroup
@@ -68,7 +74,10 @@ class GroupController {
     */
     deleteGroupById = asyncHandler(async (req, res) => {
         const { id } = req.params;
-        const result = await this.groupService.deleteGroupById(id);
+        const result = await this.groupService.deleteGroupById(id,
+            req.user._id,
+            req.user.role
+        );
         res.status(200).json({
             success: true,
             ...result
@@ -79,4 +88,4 @@ class GroupController {
 
 }
 
-export default  GroupController;
+export default GroupController;

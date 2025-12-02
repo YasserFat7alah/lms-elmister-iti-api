@@ -1,4 +1,3 @@
-import { number } from "joi";
 import mongoose from "mongoose";
 
 const GroupSchema = new mongoose.Schema({
@@ -41,7 +40,7 @@ const GroupSchema = new mongoose.Schema({
         required: true,
     },
     duration: {
-        type: number,
+        type: Number,
         required: true,
     },
     schedule: [{

@@ -1,7 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import AppError from '../utils/AppError.js';
+import AppError from '../utils/app.error.js';
 
 class AuthMW {
     protect = asyncHandler(async (req, res, next) => {

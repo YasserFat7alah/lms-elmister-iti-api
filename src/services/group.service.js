@@ -1,10 +1,10 @@
-import BaseService from "./base.service";
+import BaseService from "./base.service.js";
 import Group from "../models/Group.js";
 import AppError from "../utils/app.error.js";
 
 class GroupService extends BaseService {
-    constructor(Group) {
-        super(Group);
+    constructor(model) {
+        super(model);
     }
 
     /**
@@ -18,7 +18,11 @@ class GroupService extends BaseService {
             throw AppError.badRequest("Capacity must be greater than 0");
         }
 
-        const group = await this.model.create(data);
+        if (data.startingDate && new Date(data.startingDate) < new Date()) {
+            throw AppError.badRequest("Starting date cannot be in the past");
+        }
+
+        const group = await super.create(data);
 
         return group;
     }
@@ -42,7 +46,7 @@ class GroupService extends BaseService {
 
         if (day) queryObj['schedule.day'] = day.toLowerCase();
 
-        if (opened == 'true') {
+        if (opened === 'true' || opened === true) {
             queryObj.$expr = { $lt: ["$studentsCount", "$capacity"] };
         }
 
@@ -50,16 +54,17 @@ class GroupService extends BaseService {
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
-        const groups = await this.model
-            .find(queryObj)
-            .skip(skip)
-            .limit(limitNum)
-            .populate('courseId', 'title')
-            .populate('teacherId', 'name username')
-            .populate('students', 'name username email')
-            .sort('startingDate: 1');
-
-        const total = await this.model.countDocuments(queryObj);
+        const [groups, total] = await Promise.all([
+            this.model
+                .find(queryObj)
+                .skip(skip)
+                .limit(limitNum)
+                .populate('courseId', 'title')
+                .populate('teacherId', 'name username')
+                .populate('students', 'name username email')
+                .sort({ startingDate: 1 }),
+            super.count(queryObj)
+        ]);
         return {
             total,
             page: pageNum,
@@ -99,16 +104,19 @@ class GroupService extends BaseService {
      * @throws {badRequest} - If capacity is less than current students count
      */
 
-    async updateGroupById(id, data) {
-        const group = await this.model.findById(id);
+    async updateGroupById(id, data, userId, userRole) {
+        const group = await super.findById(id);
 
         if (!group) {
             throw AppError.notFound("Group not found");
         }
-
-        // to prevent reducing Group's capacity below current students
+        // Prevent editing if the teacher isnt the owner
+        if (userRole === 'teacher' && group.teacherId.toString() !== userId.toString()) {
+            throw AppError.forbidden("You can only update your own groups");
+        }
+        // Prevent reducing capacity below current students count
         if (data.capacity && data.capacity < group.studentsCount) {
-            throw new AppError.badRequest("Capacity cannot be less than current students count");
+            throw AppError.badRequest("Capacity Cannot be less than current students count");
         }
 
         Object.keys(data).forEach((key) => {
@@ -129,18 +137,22 @@ class GroupService extends BaseService {
      * @throws {badRequest} - If the group has already enrolled students
      */
 
-    async deleteGroupById(id) {
-        const group = await this.model.findById(id);
+    async deleteGroupById(id, userId, userRole) {
+        const group = await super.findById(id);
 
         if (!group) {
             throw AppError.notFound("Group not found");
         }
+        // Prevent deleting if the teacher isnt the owner
+        if (userRole === 'teacher' && group.teacherId.toString() !== userId.toString()) {
+            throw AppError.forbidden("You can only delete your own groups");
+        }
 
         // Prevent deleting if the Group already contains students
         if (group.studentsCount > 0) {
-            throw  AppError.badRequest("You can't delete a group that already has enrolled students");
+            throw AppError.badRequest("You can't delete a group that already has enrolled students");
         }
-        await group.deleteOne();
+        await super.deleteById(id);
 
         return { message: "Group deleted successfully" };
     }
