@@ -38,7 +38,8 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         enum: ["admin", "teacher", "parent", "student"],
-        required: true
+        required: true,
+        default: "parent"
     },
 
 /* --- --- --- Authentication information --- --- --- */

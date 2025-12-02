@@ -7,7 +7,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import courseRouter from "./routes/course.routes.js";
 import { userRouter } from "./routes/user.routes.js";
 import passport from "./config/passport/index.js";
-// import AppError from "./utils/AppError.js";
+import AppError from "./utils/app.error.js";
 
 const app = express();
 

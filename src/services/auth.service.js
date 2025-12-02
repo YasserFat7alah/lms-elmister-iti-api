@@ -217,7 +217,8 @@ export class AuthService extends BaseService {
    */
   async handleOauthLogin({ provider, providerId, email, name, avatar }) {
     if (!provider || !providerId || !email) {
-      throw AppError.unauthorized("OAuth authentication failed - missing data.");
+      console.log(provider, providerId, email);
+      throw AppError.badRequest("OAuth authentication failed - missing data.");
     }
 
     // Try to find provider

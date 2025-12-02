@@ -144,7 +144,7 @@ class AuthController {
      * @access Public
      */
     refreshToken = asyncHandler(async (req, res) => {
-        const oldRefreshToken = req.cookies.refreshToken;
+        const oldRefreshToken = req.cookies?.refreshToken;
         if (!oldRefreshToken) {
             throw AppError.unauthorized('Refresh token not found');
         }

@@ -21,7 +21,7 @@ class BaseService {
         if (select) query.select(select);
         const result = await query;
         if (!result) {
-            throw AppError.notFound(`Resource not found. by filter: ${filter}`);
+            throw AppError.notFound(`Resource not found. by filter: ${JSON.stringify(filter)}`);
         }
         return result;
     }

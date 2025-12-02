@@ -14,15 +14,20 @@ const googleStrategy =
         },
         async (accessToken, refreshToken, profile, done) => {
             try {
-                const { id, displayName, emails, photos } = profile;
-                const email = emails?.[0]?.value;
-                const avatar = photos?.[0]?.value;
+                const providerId = profile.id;
+                const provider = profile.provider;
+                const email = profile.emails?.[0]?.value;
+                const name = profile.displayName;
+                const avatar = profile.photos?.[0]?.value;  
+                
+                if (!providerId || !email) {
+                console.log('Missing OAuth data:', { providerId, email, name, avatar });
+                return done(AppError.badRequest('OAuth authentication failed - missing data.'), null);
+                }
 
-                if (!email) return done(AppError.badRequest('No email found in Google profile data'), null);  
+               const user = await authService.handleOauthLogin({ provider, providerId, email, name, avatar: { url: avatar} });
 
-               const user = await authService.handleOauthLogin({ provider: 'google', providerId: id, email, name: displayName, avatar });
-
-                return done(null, user);
+                return done(null, {user});
             } catch (error) {
                 return done(error, null);
             }

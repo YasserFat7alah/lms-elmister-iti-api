@@ -3,7 +3,7 @@
     import validate from "../middlewares/validate.middleware.js";
     import { registerSchema, loginSchema } from "../validation/auth.validation.js";
     import authMW from "../middlewares/auth.middleware.js";
-    import passport from "passport";
+    import passport from "../config/passport/index.js";
 
     const router = express.Router();
     const { authenticate, authorize} = authMW;
@@ -26,10 +26,10 @@
 
 
     /* --- --- --- OAUTH ROUTES --- --- --- */
-    router.get("/google", passport.authenticate('google', { scope: ['email', 'profile'] }));
+    router.get("/google", passport.authenticate('google', { scope: ['openid', 'email', 'profile'] }));
     router.get(
         "/google/callback",
-        passport.authenticate("google", { session: false, failureRedirect: "/api/v1/auth/google" }),
+        passport.authenticate("google", { session: false, failureRedirect: "/api/v1/ping" }),
         authController.googleCallback
     );
 
