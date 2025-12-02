@@ -14,7 +14,7 @@ coursesRouter.route("/")
 
 coursesRouter.route("/:id")
     .get(courseController.getById)                                                  // GET COURSE BY ID
-    .put(validate(updateCourseSchema), uploadThumbnail, courseController.updateById)// UPDATE COURSE
+    .patch(validate(updateCourseSchema), uploadThumbnail, courseController.updateById)// UPDATE COURSE
     .delete(courseController.deleteById);                                           // DELETE COURSE
 
 export default coursesRouter;

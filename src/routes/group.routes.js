@@ -17,7 +17,7 @@ router.get("/", groupController.getAllGroups);
 router.get("/:id", groupController.getGroupById);
 
 /*--------------------Protected routes (Teacher and Admin)--------------------*/
-router.use(auth.protect);
+router.use(auth.authenticate);
 
 router.post("/", auth.authorize("teacher,admin"), validate(createGroupSchema), groupController.createGroup);
 router.patch("/:id", auth.authorize("teacher,admin"), validate(updateGroupSchema), groupController.updateGroupById);
