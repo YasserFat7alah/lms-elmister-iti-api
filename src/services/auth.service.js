@@ -125,7 +125,7 @@ class AuthService extends BaseService {
      * @returns {object} An object containing the user and new tokens
      */
     async refreshTokens(refreshToken) {
-        const decoded = this.verifyRefreshToken(refreshToken);
+        const decoded = this.verifyToken(refreshToken);
         const user = await this.findById(decoded.id);
         if (!user) throw AppError.unauthorized('User not found');
 

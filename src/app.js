@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { groupRouter } from "./routes/group.routes.js";
 import courseRouter from "./routes/course.routes.js";
 import { CLIENT_URL } from "./utils/constants.js";
+import cookieParser from 'cookie-parser'
 // import AppError from "./utils/AppError.js";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(cors(
 ));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser())
 
 /* --- --- --- END POINTS --- --- --- */
 app.use("/api/v1/auth",authRouter)
