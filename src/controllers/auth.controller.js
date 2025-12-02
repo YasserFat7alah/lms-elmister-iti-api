@@ -24,7 +24,10 @@ class AuthController {
 
         const { accessToken, refreshToken, user } = await this.authService.register(data);
 
-        //await this.mailService.sendVerificationEmail(user.email, { name: user.name, token: verificationToken });
+        // Generate verification token and send email
+        const verificationToken = this.authService.generateToken(user);
+        const verificationLink = `${CLIENT_URL}/auth/verify-email?token=${verificationToken}`;
+        await this.mailService.initiateAccountVerfication(user.email, verificationLink);
 
         //  Set the  REFRESH TOKEN in cookie
         this.authService.setRefreshCookie(res, refreshToken);
@@ -32,7 +35,7 @@ class AuthController {
         //response with user and access token (body) >> maybe needs refactoring later
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
+            message: 'User registered successfully. Please check your email to verify your account.',
             user: this.authService.sanitize(user),
             accessToken,
         });
@@ -277,6 +280,26 @@ class AuthController {
         user: this.authService.sanitize(user) });
     });
 
+    /** Verify email (GET - for clicking link in email)
+     * @route GET /api/v1/auth/verify-email
+     * @access Public
+     */
+    verifyEmailLink = asyncHandler(async (req, res) => {
+        const { token } = req.query;
+        if (!token) {
+            return res.redirect(`${CLIENT_URL}/auth/verify-email?error=missing_token`);
+        }
+
+        try {
+            const user = await this.authService.verifyEmailToken(token);
+            // Redirect to frontend success page
+            return res.redirect(`${CLIENT_URL}/auth/verify-email?success=true&email=${encodeURIComponent(user.email)}`);
+        } catch (error) {
+            // Redirect to frontend error page
+            return res.redirect(`${CLIENT_URL}/auth/verify-email?error=invalid_token`);
+        }
+    });
+
     /** Resend verification
      * @route POST /api/v1/auth/resend-verification
      * @access Public (rate-limited)
@@ -289,8 +312,9 @@ class AuthController {
     if (!user) throw AppError.notFound('User not found');
     if (user.emailVerified) return res.status(400).json({ success:false, message: 'Email already verified' });
 
-    const token = await this.authService.generateToken(user._id);
-    await this.mailService.sendVerificationEmail(email, { name: user.name, token });
+    const verificationToken = this.authService.generateToken(user);
+    const verificationLink = `${CLIENT_URL}/auth/verify-email?token=${verificationToken}`;
+    await this.mailService.initiateAccountVerfication(email, verificationLink);
 
     res.status(200).json({ success:true, message: 'Verification email sent' });
     });  

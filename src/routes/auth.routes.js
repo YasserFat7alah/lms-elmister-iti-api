@@ -21,7 +21,8 @@
     router.post("/reset-password", authController.resetPassword);
 
     /* --- --- --- EMAIL VERIFICATION --- --- --- */
-    router.post("/verify-email", authController.verifyEmail);
+    router.get("/verify-email", authController.verifyEmailLink); // GET for clicking link in email
+    router.post("/verify-email", authController.verifyEmail); // POST for API calls
     router.post("/resend-verification", authController.resendVerification);
 
 
