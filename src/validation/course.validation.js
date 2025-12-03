@@ -1,8 +1,7 @@
 import Joi from "joi";
 
-// Common validation for grade levels and status
 const gradeLevels = [
-  "1","2","3","4","5","6","7","8","9","10","11","12"
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"
 ];
 
 const statusValues = ["draft", "published", "archived"];
@@ -12,9 +11,14 @@ export const createCourseSchema = Joi.object({
   title: Joi.string().trim().min(3).max(150).required()
     .messages({
       "string.empty": "Title is required",
-      "string.min": "Title must be at least 3 characters",
-      "string.max": "Title must be at most 150 characters",
+      "string.min": "Title must be between 3 and 150 characters",
+      "string.max": "Title must be between 3 and 150 characters",
     }),
+  subTitle: Joi.string().trim().min(3).max(150).required().messages({
+    "string.empty": "Title is required",
+    "string.min": "Sub-title must be between 3 and 150 characters",
+    "string.max": "Sub-title must be between 3 and 150 characters",
+  }),
 
   description: Joi.string().trim().min(10).max(2000).required()
     .messages({
@@ -36,32 +40,13 @@ export const createCourseSchema = Joi.object({
 
   status: Joi.string().valid(...statusValues).optional(),
 
-  pricing: Joi.object({
-    isPaid: Joi.boolean().default(false),
-
-    price: Joi.when("isPaid", {
-      is: true,
-      then: Joi.number().min(0).required().messages({
-        "number.base": "Price must be a number",
-        "number.min": "Price cannot be negative",
-        "any.required": "Price is required if course is paid",
-      }),
-      otherwise: Joi.forbidden()
-    }),
-
-    currency: Joi.string().default("USD"),
-  }).optional(),
-
   language: Joi.string().optional().default("English"),
 
   tags: Joi.array().items(Joi.string().trim()).optional(),
 
-  teacherId: Joi.string().required()
-    .messages({
-      "string.empty": "Teacher ID is required",
-    }),
-
   groups: Joi.array().items(Joi.string()).optional(),
+  averageRating: Joi.number(),
+  ratingsCount: Joi.number(),
 });
 
 // Validation for updating a course
@@ -71,6 +56,10 @@ export const updateCourseSchema = Joi.object({
       "string.min": "Title must be at least 3 characters",
       "string.max": "Title must be at most 150 characters",
     }),
+  subTitle: Joi.string().trim().min(3).max(150).messages({
+    "string.min": "Sub-title must be between 3 and 150 characters",
+    "string.max": "Sub-title must be between 3 and 150 characters",
+  }),
 
   description: Joi.string().trim().min(10).max(2000).optional()
     .messages({
@@ -87,25 +76,9 @@ export const updateCourseSchema = Joi.object({
 
   status: Joi.string().valid(...statusValues).optional(),
 
-  pricing: Joi.object({
-    isPaid: Joi.boolean().optional(),
-    price: Joi.when("isPaid", {
-      is: true,
-      then: Joi.number().min(0).required().messages({
-        "number.base": "Price must be a number",
-        "number.min": "Price cannot be negative",
-        "any.required": "Price is required if course is paid",
-      }),
-      otherwise: Joi.forbidden()
-    }),
-    currency: Joi.string().optional(),
-  }).optional(),
-
   language: Joi.string().optional(),
 
   tags: Joi.array().items(Joi.string().trim()).optional(),
-
-  teacherId: Joi.string().optional(),
 
   groups: Joi.array().items(Joi.string()).optional(),
 });
