@@ -34,23 +34,24 @@ export class UserService extends BaseService {
      * @returns {object} The uploaded avatar details
      */
     async uploadAvatar(userId, avatarFile) {
-        let avatar = null;
-        let user = await this.findById(userId);
-        avatar = user.avatar || null;
+        if (!userId) throw AppError.badRequest('No user id provided');
+        if (!avatarFile || !avatarFile.buffer) throw AppError.badRequest('No avatar file provided');
+
+        const user = await this.findById(userId);
+        if (!user) throw AppError.notFound(`User with id (${userId}) not found`);
+
+
+        let avatar = user.avatar || null;
         
-        if (avatarFile) {
-
-            const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/", { resource_type: "image" });
+        const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/", { resource_type: "image" });
             
-            if (avatar.publicId && uploadResult.publicId) {
-                await cloudinaryService.delete(avatar.publicId, avatar.type);
-            }
-
-            avatar = {
-                ...uploadResult
-            };
+        if (avatar.publicId && uploadResult.publicId) {
+            await cloudinaryService.delete(avatar.publicId, avatar.type);
         }
-        return avatar;
+
+        return {
+            ...uploadResult
+        };
     }
 
     /** delete user avatar
