@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 
 const EnrollmentSchema = new mongoose.Schema({
     student: {
@@ -6,9 +7,9 @@ const EnrollmentSchema = new mongoose.Schema({
         required: true
     },
     
-    course: {
+    group: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Course',
+        ref: 'Group',
         required: true
     },
 
@@ -23,3 +24,10 @@ const EnrollmentSchema = new mongoose.Schema({
         default: 'active' 
     }
 });
+
+// Add index for efficient queries
+EnrollmentSchema.index({ student: 1, group: 1 }, { unique: true });
+EnrollmentSchema.index({ group: 1 });
+EnrollmentSchema.index({ student: 1 });
+
+export default mongoose.model("Enrollment", EnrollmentSchema);
