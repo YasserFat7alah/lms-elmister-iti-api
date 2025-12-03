@@ -1,6 +1,7 @@
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
 import AppError from "../utils/app.error.js";
+import streamifier from 'streamifier';
 
 /** Cloudinary service
  * @class CloudinaryService
@@ -18,22 +19,27 @@ export class CloudinaryService {
    * @param {string} folder - Cloudinary folder
    * @param {Object} options - Additional Cloudinary options
    */
-  async upload(file, folder = "uploads", options = {}) {
-    if (!file) throw AppError.badRequest("No file provided");
+  async upload(file, folder = "uploads", options = {}) {  
+    if (!file || !file.buffer) throw AppError.badRequest("No file provided");
 
-    const dataUri = this.toDataUri(file);
+    const buffer = file.buffer;
 
-    const result = await this.cloudinary.uploader.upload(dataUri, {
-      folder,
-      resource_type: "auto", 
-      ...options,
+    return new Promise((resolve, reject) => {
+      const uploadStream = this.cloudinary.uploader.upload_stream({
+        folder,
+        resource_type: "auto", 
+        ...options,},
+        (error, result) => {
+        if (error) reject(error);
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          type: result.resource_type
+        });
+      });
+
+      streamifier.createReadStream(buffer).pipe(uploadStream);
     });
-
-    return {
-      url: result.secure_url,
-      publicId: result.public_id,
-      type: result.resource_type
-    };
   }
 
   /** Delete Cloudinary file

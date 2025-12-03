@@ -1,8 +1,5 @@
-import cloudinary from "cloudinary";
-import dotenv from "dotenv";
+import {v2 as cloudinary} from "cloudinary";
 import { CLOUDINARY_URL } from "../utils/constants.js";
-
-dotenv.config();
 
 const url = new URL(CLOUDINARY_URL);
 
