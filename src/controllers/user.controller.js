@@ -7,7 +7,7 @@ class UserController {
   }
 
   /** Get current user profile */
-  getMe = asyncHandler(async (req, res, next) => {
+  getMe = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const user = await this.userService.getMe(userId);
     res.status(200).json({
@@ -17,7 +17,7 @@ class UserController {
   });
 
   /** Update user profile */
-  updateMe = asyncHandler(async (req, res, next) => {
+  updateMe = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const data = req.body;
     const file = req.file ? req.file : null;
@@ -35,7 +35,7 @@ class UserController {
   });
 
   /** Upload user avatar */
-  uploadAvatar = asyncHandler(async (req, res, next) => {
+  uploadAvatar = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const file = req.file ? req.file : null;
 

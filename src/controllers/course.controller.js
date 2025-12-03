@@ -1,4 +1,3 @@
-import courseService from "../services/course.service.js";
 import asyncHandler from "express-async-handler";
 import AppError from "../utils/app.error.js";
 
@@ -19,47 +18,92 @@ class CourseController {
         this.courseService = courseService;
     }
 
-/* --- --- --- CREATE COURSE --- --- --- */
-    create = asyncHandler(async (req, res, next) => {
-            const data = req.body;
-            const file = req.file ? req.file : null;
-            if(!data.title || !data.description) 
-                throw AppError.badRequest("Title and Description are required");
+    /**
+     * Create a new Course
+     * @route POST /api/v1/groups
+    */
+    createCourse = asyncHandler(async (req, res, next) => {
+        const data = req.body;
+        const file = req.file ? req.file : null;
 
-            const newCourse = await this.courseService.create(data, file);
-            res.status(201).json(newCourse);
+        data.teacherId = req.user._id;
 
-    });
-
-/* --- --- --- GET ALL COURSES --- --- --- */
-    getAll = asyncHandler(async (req, res, next) => {
-            const courses = await this.courseService.findAll();
-            res.status(200).json(courses);
-    });
-
-/* --- --- --- GET COURSE BY ID --- --- --- */
-    getById = asyncHandler(async (req, res, next) => {
-            const course = await this.courseService.findById(req.params.id);
-            res.status(200).json(course);
-    });
-
-/* --- --- --- UPDATE COURSE --- --- --- */
-    updateById = asyncHandler(async (req, res, next) => {
-            const data = req.body;
-            const file = req.file ? req.file : null;
-
-            if(!data || !file) 
-                throw AppError.badRequest("No data provided for update");
-            const id = req.params.id;
-            const updatedCourse = await this.courseService.updateById(id, data, file);
-            res.status(200).json(updatedCourse);
+        const newCourse = await this.courseService.createCourse(data, file);
+        res.status(201).json({
+            success: true,
+            message: "Course created successfully",
+            data: newCourse
         });
 
-/* --- --- --- DELETE COURSE --- --- --- */   
-    deleteById = asyncHandler(async (req, res, next) => {
-            await this.courseService.deleteById(req.params.id);
-            res.status(204).send();
+    });
+
+    /**
+     * Get All Courses
+     * @route Get /api/v1/groups
+    */
+    getAllCourses = asyncHandler(async (req, res, next) => {
+        const { page, limit, ...filters } = req.query;
+        const data = await this.courseService.getCourses(filters, { page, limit });
+        res.status(200).json({
+            success: true,
+            ...data
+
         });
+    });
+
+    /**
+    * Get a Course by ID
+    * @route Get /api/v1/groups/:id
+   */
+    getCourseById = asyncHandler(async (req, res, next) => {
+        const course = await this.courseService.getCourseById(req.params.id);
+        res.status(200).json({
+            success: true,
+            data: course
+        });
+    });
+
+
+    /**
+     * Edit a Course
+     * @route Patch /api/v1/groups/:id
+    */
+    updateCourseById = asyncHandler(async (req, res, next) => {
+        const data = req.body;
+        const file = req.file ? req.file : null;
+
+        if (!data && !file)
+            throw AppError.badRequest("No data provided for update");
+        const id = req.params.id;
+        const updatedCourse = await this.courseService.updateCourseById(
+            id,
+            data,
+            file,
+            req.user._id,
+            req.user.role
+        );
+
+        res.status(200).json(updatedCourse);
+    });
+
+
+    /**
+  * Delete a Course
+  * @route DELETE /api/v1/groups/:id
+ */
+    deleteCourseById = asyncHandler(async (req, res, next) => {
+        const courseId = req.params.id;
+        await this.courseService.deleteCourseById(
+            courseId,
+            req.user._id,
+            req.user.role
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Course deleted successfully"
+        });
+    });
 }
 
-export default new CourseController(courseService);
+export default CourseController;

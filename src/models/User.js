@@ -100,14 +100,10 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {
-    console.log(this.password , "   before");
-    
     // Hash password if modified
     if (this.isModified('password') && this.password) {
         this.password = await this.hashPassword(this.password);
     }
-
-    console.log(this.password , "   after");
 
     // Generate username
     if (!this.username) {

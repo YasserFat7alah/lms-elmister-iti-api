@@ -7,11 +7,14 @@ class GroupController {
     }
 
     /**
-     * Create a new group
+     * Create a new group and add it to the course
      * @route POST /api/v1/groups
     */
 
     createGroup = asyncHandler(async (req, res) => {
+        const data = req.body;
+
+        data.teacherId = req.user._id;
         const group = await this.groupService.createGroup(req.body);
 
         res.status(201).json({

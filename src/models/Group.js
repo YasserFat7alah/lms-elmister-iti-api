@@ -24,7 +24,6 @@ const GroupSchema = new mongoose.Schema({
     },
     price: {
         type: Number,
-        default: 0,
         min: 0,
         required: function () {
             return !this.isFree;
@@ -37,11 +36,6 @@ const GroupSchema = new mongoose.Schema({
     },
     startingTime: {
         type: String,
-        required: true,
-    },
-    duration: {
-        type: Number,
-        required: true,
     },
     schedule: [{
         day: {
@@ -58,8 +52,14 @@ const GroupSchema = new mongoose.Schema({
     capacity: {
         type: Number,
         required: true,
-        min: 0,
+        min: 1,
     },
+    minStudents:{
+        type: Number,
+        default: 1,
+        min: 1
+    },
+
     studentsCount: {
         type: Number,
         default: 0,
@@ -115,7 +115,7 @@ GroupSchema.virtual('availableSeats').get(function () {
 });
 
 //....................PRE HOOKS.....................
-GroupSchema.pre("save", function (next) {
+GroupSchema.pre("save", function () {
     // sync studentsCount
     this.studentsCount = this.students.length;
 
@@ -131,7 +131,7 @@ GroupSchema.pre("save", function (next) {
         this.price = 0;
     }
 
-    next();
+
 });
 
 //....................INDEXES.....................
