@@ -1,4 +1,6 @@
 import cloudinary from "../config/cloudinary.js";
+import fs from "fs";
+import AppError from "../utils/app.error.js";
 
 /** Cloudinary service
  * @class CloudinaryService
@@ -17,13 +19,13 @@ export class CloudinaryService {
    * @param {Object} options - Additional Cloudinary options
    */
   async upload(file, folder = "uploads", options = {}) {
-    if (!file) throw new Error("No file provided");
+    if (!file) throw AppError.badRequest("No file provided");
 
     const dataUri = this.toDataUri(file);
 
     const result = await this.cloudinary.uploader.upload(dataUri, {
       folder,
-      resource_type: "auto",  // auto-detect image, video, raw (PDF)
+      resource_type: "auto", 
       ...options,
     });
 
@@ -43,11 +45,22 @@ export class CloudinaryService {
     });
   }
 
-   /** Convert Multer file buffer to Data URI
+   /** Convert Multer file (memory or disk) to Data URI
    * @param {Object} file - Multer file object
    */
   toDataUri(file) {
-    const base64 = file.buffer.toString("base64");
+    // Support both memoryStorage (buffer) and diskStorage (path)
+    let buffer;
+
+    if (file.buffer) { // MemoryStorage
+      buffer = file.buffer;
+    } else if (file.path) { // DiskStorage
+      buffer = fs.readFileSync(file.path);
+    } else {
+      throw new Error("File has neither buffer nor path");
+    }
+
+    const base64 = buffer.toString("base64");
     return `data:${file.mimetype};base64,${base64}`;
   }
 }
