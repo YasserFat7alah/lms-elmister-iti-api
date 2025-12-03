@@ -9,7 +9,8 @@ class UserController {
   /** Get current user profile */
   getMe = asyncHandler(async (req, res, next) => {
     const userId = req.user.id;
-    const user = await this.userService.getMe(userId);
+    const role = req.user.role;
+    const user = await this.userService.getMe(userId, role);
     res.status(200).json({
       success: true,
       data: { user },

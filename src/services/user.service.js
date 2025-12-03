@@ -6,8 +6,8 @@ import cloudinaryService from "./cloudinary.service.js";
 
 
 class UserService extends BaseService {
-    constructor(User) {
-        super(User);
+    constructor(model) {
+        super(model);
     }
 /* --- --- --- User Profile --- --- --- */
     /** Get current user profile
@@ -15,8 +15,15 @@ class UserService extends BaseService {
      * @returns {object} The user profile
      * @throws {AppError} If the user is not found
      */
-    async getMe(userId) {
-        let user = await this.findById(userId);
+    async getMe(userId, role) {
+        let query = this.model.findById(userId);
+
+        if (role !== 'admin') query.populate(`+${role}Data`);
+
+        let user = await query.lean();
+        if (!user) throw AppError.notFound(`User with id ${userId} not found`);
+
+        user = { ...user, ...user[role + 'Data'] };
         user = this.sanitize(user);
         return user;
     }
