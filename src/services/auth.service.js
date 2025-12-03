@@ -1,14 +1,18 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import User from "../models/users/User.js";
 import AppError from "../utils/app.error.js";
 import BaseService from "./base.service.js";
 import {
-  COOKIE_SETTINGS,
+  ACCESS_COOKIE_SETTINGS,
   JWT_ACCESS_EXPIRE,
   JWT_REFRESH_EXPIRE,
   JWT_REFRESH_SECRET,
   JWT_SECRET,
+  REFRESH_COOKIE_SETTINGS,
 } from "../utils/constants.js";
+import TeacherProfile from "../models/users/TeacherProfile.js";
+import StudentProfile from "../models/users/StudentProfile.js";
+import ParentProfile from "../models/users/ParentProfile.js";
 
 export class AuthService extends BaseService {
   constructor(userModel) {
@@ -120,6 +124,57 @@ export class AuthService extends BaseService {
     };
   }
 
+  /** Complete User Profile
+   * @param {string} userId - ID of the user
+   * @param {string} role - Role of the user (teacher, student, parent)
+   * @param {object} data - Profile data from request body
+   */
+  async completeProfile(userId, role, data) {
+    let profileExists = false;
+    if (role === "teacher") profileExists = await TeacherProfile.findOne({ user: userId });
+    else if (role === "student") profileExists = await StudentProfile.findOne({ user: userId });
+    else if (role === "parent") profileExists = await ParentProfile.findOne({ user: userId });
+
+    if (profileExists) throw AppError.badRequest(`Your ${role} profile is already completed.`);
+    
+
+    if (role === "teacher") {
+      await TeacherProfile.create({
+        user: userId,
+        bio: data.bio,
+        subjects: data.subjects,
+        qualifications: data.qualifications,
+      });
+      
+    } else if (role === "student") {
+      const grade = data.gradeLevel || data.grade;
+      await StudentProfile.create({
+        user: userId,
+        grade: grade,
+        parent: data.parentId,
+      });
+      
+    } else if (role === "parent") {
+      await ParentProfile.create({
+        user: userId,
+        address: data.address,
+      });
+    }
+
+    let user = await this.model.findById(userId).populate(`${role}Data`).lean();
+
+    if (user[`${role}Data`]) {
+        user = { 
+            ...user, 
+            ...user[`${role}Data`],
+            isProfileCompleted: true 
+        };   
+        delete user[`${role}Data`];
+    }
+
+    return this.sanitize(user);
+  }
+
   /* --- --- --- Password Management --- --- --- */
 
   /** Change User Password
@@ -151,7 +206,7 @@ export class AuthService extends BaseService {
 
     user = await super.updateById(user._id, { otp: null, otpExpiry: null });
     user = await super.updatePassword(user._id, newPassword);
-    
+
     return this.sanitize(user);
   }
 
@@ -179,14 +234,29 @@ export class AuthService extends BaseService {
    * @param {string} refreshToken - The refresh token to set in the cookie
    */
   setRefreshCookie(res, refreshToken) {
-    res.cookie("refreshToken", refreshToken, COOKIE_SETTINGS);
+    res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_SETTINGS);
   }
 
   /** Clear the refresh token cookie
    * @param {object} res - The Express response object
    */
   clearRefreshCookie(res) {
-    res.clearCookie("refreshToken", COOKIE_SETTINGS);
+    res.clearCookie("refreshToken", REFRESH_COOKIE_SETTINGS);
+  }
+
+  /** Set the access token cookie with appropriate options
+   * @param {object} res - The Express response object
+   * @param {string} accessToken - The access token to set in the cookie
+   */
+  setAccessCookie(res, accessToken) {
+    res.cookie("accessToken", accessToken, ACCESS_COOKIE_SETTINGS);
+  }
+
+  /** Clear the access token cookie
+   * @param {object} res - The Express response object
+   */
+  clearAccessCookie(res) {
+    res.clearCookie("accessToken", ACCESS_COOKIE_SETTINGS);
   }
 
   /* --- --- --- Email Verification --- --- --- */
@@ -198,14 +268,14 @@ export class AuthService extends BaseService {
   async verifyEmailToken(token) {
     const decoded = this.verifyToken(token, JWT_SECRET);
     const user = await this.findById(decoded.id);
-    
+
     if (user.emailVerified) {
       throw AppError.badRequest("Email already verified");
     }
 
     user.emailVerified = true;
     await user.save();
-    
+
     return this.sanitize(user);
   }
 
@@ -225,28 +295,35 @@ export class AuthService extends BaseService {
     let user = await this.model.findOne({
       $or: [
         { provider, providerId },
-        { 'linkedProviders.provider': provider, 'linkedProviders.providerId': providerId },
+        {
+          "linkedProviders.provider": provider,
+          "linkedProviders.providerId": providerId,
+        },
       ],
     });
-    
+
     if (user) {
-    const tokens = this.generateTokens(user);
-    return {
-      user: this.sanitize(user),
-      ...tokens,
-    };
-  }
+      const tokens = this.generateTokens(user);
+      return {
+        user: this.sanitize(user),
+        ...tokens,
+      };
+    }
 
     // check if email exists in database
     user = await this.model.findOne({ email });
-    if (user){
+    if (user) {
       const tokens = this.generateTokens(user);
-      const updated = await this.linkOAuthProvider(user._id.toString(), provider, providerId);
+      const updated = await this.linkOAuthProvider(
+        user._id.toString(),
+        provider,
+        providerId
+      );
       return {
         user: this.sanitize(updated),
         ...tokens,
-      }
-    };
+      };
+    }
 
     user = await this.create({
       provider,
@@ -261,7 +338,7 @@ export class AuthService extends BaseService {
     return {
       user: this.sanitize(user),
       ...tokens,
-    };  
+    };
   }
 
   /** Link Oauth provider to existing account
@@ -271,23 +348,30 @@ export class AuthService extends BaseService {
    * @returns {object} The updated user
    */
   async linkOAuthProvider(userId, provider, providerId) {
-    const user = await this.findById(userId);    
+    const user = await this.findById(userId);
 
     // Check if provider is already linked
-    const isLinked = user.linkedProviders?.some(lp => lp.provider === provider );
-    if (isLinked) throw AppError.conflict(`${provider} account is already linked`);
-    
+    const isLinked = user.linkedProviders?.some(
+      (lp) => lp.provider === provider
+    );
+    if (isLinked)
+      throw AppError.conflict(`${provider} account is already linked`);
 
     // Check if another user has this provider ID
     const existingUser = await this.model.findOne({
       $or: [
         { providerId, provider },
-        { "linkedProviders.providerId": providerId, "linkedProviders.provider": provider },
+        {
+          "linkedProviders.providerId": providerId,
+          "linkedProviders.provider": provider,
+        },
       ],
     });
 
     if (existingUser && existingUser._id.toString() !== userId) {
-      throw AppError.conflict(`This ${provider} account is already linked to another user`);
+      throw AppError.conflict(
+        `This ${provider} account is already linked to another user`
+      );
     }
 
     // Add to linked providers
@@ -309,7 +393,7 @@ export class AuthService extends BaseService {
    * @returns {object} The updated user
    */
   async unlinkOauthProvider(userId, provider) {
-    const user = await this.findById(userId)
+    const user = await this.findById(userId);
 
     if (user.provider === provider && !user.password) {
       throw AppError.badRequest(
@@ -317,16 +401,18 @@ export class AuthService extends BaseService {
       );
     }
 
-    if(!user.linkedProviders) return this.sanitize(user);
-    if(user.provider === provider) {
-      user.provider = null ;
+    if (!user.linkedProviders) return this.sanitize(user);
+    if (user.provider === provider) {
+      user.provider = null;
       user.providerId = null;
       await user.save();
     }
 
     // Remove from linked providers
     if (user.linkedProviders) {
-      user.linkedProviders = user.linkedProviders.filter( lp => lp.provider !== provider );
+      user.linkedProviders = user.linkedProviders.filter(
+        (lp) => lp.provider !== provider
+      );
       await user.save();
     }
 

@@ -1,49 +1,45 @@
 import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// تأكد إن فولدر uploads موجود، ولو مش موجود نكريته
+const uploadDir = 'uploads/';
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir);
+}
 
 class MulterUploader {
     constructor() {
-        this.storage = multer.memoryStorage();
+        // تغيير الاستراتيجية لـ DiskStorage
+        this.storage = multer.diskStorage({
+            destination: function (req, file, cb) {
+                cb(null, uploadDir)
+            },
+            filename: function (req, file, cb) {
+                // تسمية الملف باسم فريد عشان التداخل
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+                cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+            }
+        });
+
         this.fileFilter = (req, file, cb) => {
             const allowed = [
-                "image/jpeg",
-                "image/png",
-                "image/webp",
-                "video/mp4",
-                "video/quicktime",
-                "application/pdf",
+                "image/jpeg", "image/png", "image/webp",
+                "video/mp4", "video/quicktime", "application/pdf",
             ];
-
-        if (allowed.includes(file.mimetype)) cb(null, true);
-        else cb(new Error("Invalid file type"), false);
+            if (allowed.includes(file.mimetype)) cb(null, true);
+            else cb(new Error("Invalid file type"), false);
         };
 
         this.upload = multer({ 
-            storage: this.storage   ,
-            limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-
+            storage: this.storage,
+            limits: { fileSize: 500 * 1024 * 1024 }, // 500MB (تأكد إنك غيرت دي)
             fileFilter: this.fileFilter  
         });
     }
 
-    /**
-     * Upload a single file
-     * @param {string} fieldName - The name of the form field for the file
-     * @returns {middleware} - Multer middleware to handle single file upload
-     */
-    single(fieldName) {
-        return this.upload.single(fieldName);
-    }
-
-    /**
-     * Upload multiple files
-     * @param {string} fieldName - The name of the form field for the files
-     * @param {number} max - The maximum number of files to upload
-     * @returns {middleware} - Multer middleware to handle multiple file uploads
-     */
-    multiple(fieldName, max = 5) {
-        return this.upload.array(fieldName, max);
-    }
+    single(fieldName) { return this.upload.single(fieldName); }
+    multiple(fieldName, max = 5) { return this.upload.array(fieldName, max); }
 }
 
-const multerMiddleware = new MulterUploader();
-export default multerMiddleware;
+export default new MulterUploader();

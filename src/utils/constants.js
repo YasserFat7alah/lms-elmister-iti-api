@@ -50,9 +50,16 @@ export const GRADE_LEVELS = [
 ];
 
 // ===> Cookie Settings
-export const COOKIE_SETTINGS = {
+export const REFRESH_COOKIE_SETTINGS = {
     httpOnly: true,
     secure: IS_PRODUCTION,
     sameSite: IS_PRODUCTION ? 'none' : 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+export const ACCESS_COOKIE_SETTINGS = {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: IS_PRODUCTION ? 'none' : 'strict',
+    maxAge: 15 * 60 * 1000,
 };

@@ -2,7 +2,7 @@ import AppError from "../utils/app.error.js";
 import asyncHandler from "express-async-handler";
 import authService from "../services/auth.service.js";
 import mailService from "../services/mail.service.js";
-import { CLIENT_URL, COOKIE_SETTINGS } from "../utils/constants.js";
+import { CLIENT_URL } from "../utils/constants.js";
 
 
 class AuthController {
@@ -31,6 +31,7 @@ class AuthController {
 
         //  Set the  REFRESH TOKEN in cookie
         this.authService.setRefreshCookie(res, refreshToken);
+        this.authService.setAccessCookie(res, accessToken);
 
         //response with user and access token (body) >> maybe needs refactoring later
         res.status(201).json({
@@ -53,6 +54,7 @@ class AuthController {
 
         const { accessToken, refreshToken, user } = await this.authService.login(email, password);
         this.authService.setRefreshCookie(res, refreshToken);
+        this.authService.setAccessCookie(res, accessToken);
 
         res.status(200).json({
             success: true,
@@ -233,32 +235,16 @@ class AuthController {
      */
     completeProfile = asyncHandler(async (req, res) => {
         const userId = req.user.id;
+        const role = req.user.role;
         const data = req.body;
 
-        // Get allowed fields for profile completion
-        const allowedFields = [
-            'name',
-            'phone',
-            'role',
-            'gradeLevel',
-            'specialization',
-            'age',
-            'parentId',
-        ];
-
-        const updateData = {};
-        for (const key of allowedFields) {
-            if (data[key] !== undefined) {
-                updateData[key] = data[key];
-            }
-        }
-
-        const user = await this.authService.updateById(userId, updateData);
+        const user = await this.authService.updateById(userId, data);
+        const userData = await this.authService.completeProfile(userId, role, data);
 
         res.status(200).json({
             success: true,
             message: 'Profile completed successfully',
-            user: this.authService.sanitize(user),
+            data: {user: userData},
         });
     });
 

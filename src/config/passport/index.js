@@ -1,6 +1,6 @@
 import passport from 'passport';
 
-import User from '../../models/User.js';
+import User from '../../models/users/User.js';
 import googleStrategy from './google.startegy.js';
 
 
