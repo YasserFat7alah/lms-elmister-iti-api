@@ -46,7 +46,7 @@ export const createCourseSchema = Joi.object({
 
   groups: Joi.array().items(Joi.string()).optional(),
   averageRating: Joi.number(),
-  ratingCount: Joi.number(),
+  ratingsCount: Joi.number(),
 });
 
 // Validation for updating a course

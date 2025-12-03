@@ -76,7 +76,7 @@ const CourseSchema = new mongoose.Schema(
       max: 5,
     },
 
-    ratingCount: {
+    ratingsCount: {
       type: Number,
       default: 0,
     },
