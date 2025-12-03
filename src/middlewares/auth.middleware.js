@@ -1,8 +1,9 @@
 import asyncHandler from 'express-async-handler';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
-import User from '../models/User.js';
+import User from '../models/users/User.js';
 import AppError from '../utils/app.error.js';
+import { JWT_SECRET } from '../utils/constants.js';
 
 export class AuthMW {
     
@@ -15,11 +16,11 @@ export class AuthMW {
         let token = null;
 
         if (req.cookies && req.cookies.refreshToken) {
-            token = req.cookies.refreshToken;
+            token = req.cookies.accessToken;
         } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
         } else {
-            token = req.header.authorization;
+            token = req.headers.authorization;
         } 
 
         if (!token) {
@@ -28,7 +29,7 @@ export class AuthMW {
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const decoded = jwt.verify(token, JWT_SECRET);
             req.user = await User.findById(decoded.id).select('-password');
             next();
         } catch (error) {
@@ -45,7 +46,7 @@ export class AuthMW {
         return (req, res, next) => {
             if (!roles.includes(req.user.role)) {
                 res.status(403);
-                throw AppError.forbidden(`Access denied: Requires ${roles.join(' or ')} role`);
+                return next(AppError.forbidden(`Access denied: Requires ${roles.join(' or ')} role`));
             }
             next();
         };

@@ -6,9 +6,17 @@ export class MulterUploader {
         this.fileFilter = (req, file, cb) => {
             const allowed = [
                 "image/jpeg",
+                "image/jpg",
                 "image/png",
                 "image/webp",
+                "image/gif",
+                "image/svg+xml",
+                "image/tiff",
                 "video/mp4",
+                "video/mov",
+                "video/avi",
+                "video/wmv",
+                "video/flv",
                 "video/quicktime",
                 "application/pdf",
             ];
@@ -19,7 +27,7 @@ export class MulterUploader {
 
         this.upload = multer({ 
             storage: this.storage   ,
-            limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+            limits: { fileSize: 150 * 1024 * 1024 }, // 5MB limit
 
             fileFilter: this.fileFilter  
         });

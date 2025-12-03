@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { GRADE_LEVELS } from "../utils/constants.js";
+import { GRADE_LEVELS } from "../../utils/constants.js";
 
 const StudentProfileSchema = new mongoose.Schema({
   user: {
@@ -20,7 +20,7 @@ const StudentProfileSchema = new mongoose.Schema({
     trim: true,
   },
 
-  parentId: {
+  parent: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
@@ -33,8 +33,8 @@ const StudentProfileSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-StudentProfileSchema.index({ userId: 1 });
-StudentProfileSchema.index({ parentId: 1 });
+StudentProfileSchema.index({ user: 1 }, { unique: true });
+StudentProfileSchema.index({ parent: 1 });
 
 export default mongoose.model("StudentProfile", StudentProfileSchema);
 

@@ -20,8 +20,8 @@ export const createGroupSchema = Joi.object({
         }),
 
     startingDate: Joi.date().required(),
-    startingTime: Joi.string().required(),
-    duration: Joi.number().required(),
+    startingTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
+
 
     schedule: Joi.array().items(Joi.object({
         day: Joi.string().valid(...weekDays).required().messages({
@@ -35,13 +35,13 @@ export const createGroupSchema = Joi.object({
             'string.pattern.base': 'Time must be in HH:MM format',
         }),
     })).optional(),
-
-    capacity: Joi.number().min(0).required(),
+    minStudents: Joi.number().min(1).default(1),
+    capacity: Joi.number().min(1).required(),
     studentsCount: Joi.number().default(0),
     status: Joi.string().valid('open', 'closed').default('open'),
 
     location: Joi.string().when('type', {
-        is: 'online',
+        is: 'offline' || 'hybrid',
         then: Joi.required(),
     }),
 
@@ -51,7 +51,6 @@ export const createGroupSchema = Joi.object({
     }),
 
     courseId: Joi.string().required(),
-    teacherId: Joi.string().required(),
     students: Joi.array().items(Joi.string()),
 
 })
@@ -75,7 +74,6 @@ export const updateGroupSchema = Joi.object({
     startingTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).messages({
         'string.pattern.base': 'Time must be in HH:MM format',
     }),
-    duration: Joi.number(),
 
     schedule: Joi.array().items(Joi.object({
         day: Joi.string().valid(...weekDays).messages({
@@ -86,12 +84,12 @@ export const updateGroupSchema = Joi.object({
         }),
     })),
 
-    capacity: Joi.number().min(0),
+    capacity: Joi.number().min(1),
     studentsCount: Joi.number().min(0),
     status: Joi.string().valid('open', 'closed'),
 
     location: Joi.string().when('type', {
-        is: 'online',
+        is: 'offline' || 'hybrid',
         then: Joi.required(),
     }),
     link: Joi.string().when('type', {
@@ -100,6 +98,5 @@ export const updateGroupSchema = Joi.object({
     }),
 
     courseId: Joi.string(),
-    teacherId: Joi.string(),
     students: Joi.array().items(Joi.string()),
 });

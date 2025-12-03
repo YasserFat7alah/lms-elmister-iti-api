@@ -1,4 +1,7 @@
 import cloudinary from "../config/cloudinary.js";
+import fs from "fs";
+import AppError from "../utils/app.error.js";
+import streamifier from 'streamifier';
 
 /** Cloudinary service
  * @class CloudinaryService
@@ -16,22 +19,27 @@ export class CloudinaryService {
    * @param {string} folder - Cloudinary folder
    * @param {Object} options - Additional Cloudinary options
    */
-  async upload(file, folder = "uploads", options = {}) {
-    if (!file) throw new Error("No file provided");
+  async upload(file, folder = "uploads", options = {}) {  
+    if (!file || !file.buffer) throw AppError.badRequest("No file provided");
 
-    const dataUri = this.toDataUri(file);
+    const buffer = file.buffer;
 
-    const result = await this.cloudinary.uploader.upload(dataUri, {
-      folder,
-      resource_type: "auto",  // auto-detect image, video, raw (PDF)
-      ...options,
+    return new Promise((resolve, reject) => {
+      const uploadStream = this.cloudinary.uploader.upload_stream({
+        folder,
+        resource_type: "auto", 
+        ...options,},
+        (error, result) => {
+        if (error) reject(error);
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          type: result.resource_type
+        });
+      });
+
+      streamifier.createReadStream(buffer).pipe(uploadStream);
     });
-
-    return {
-      url: result.secure_url,
-      publicId: result.public_id,
-      type: result.resource_type
-    };
   }
 
   /** Delete Cloudinary file
@@ -43,11 +51,22 @@ export class CloudinaryService {
     });
   }
 
-   /** Convert Multer file buffer to Data URI
+   /** Convert Multer file (memory or disk) to Data URI
    * @param {Object} file - Multer file object
    */
   toDataUri(file) {
-    const base64 = file.buffer.toString("base64");
+    // Support both memoryStorage (buffer) and diskStorage (path)
+    let buffer;
+
+    if (file.buffer) { // MemoryStorage
+      buffer = file.buffer;
+    } else if (file.path) { // DiskStorage
+      buffer = fs.readFileSync(file.path);
+    } else {
+      throw new Error("File has neither buffer nor path");
+    }
+
+    const base64 = buffer.toString("base64");
     return `data:${file.mimetype};base64,${base64}`;
   }
 }

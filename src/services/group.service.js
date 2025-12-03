@@ -3,14 +3,16 @@ import Group from "../models/Group.js";
 import AppError from "../utils/app.error.js";
 
 class GroupService extends BaseService {
-    constructor(model) {
+    constructor(model, courseModel) {
         super(model);
+        this.courseModel = courseModel;
     }
 
     /**
-     * Create a new group with the given data
-     * @param {Object} data - The group data
-     * @returns {Promise<Group>} - The created group
+     * Creates a new group and adds it to the course's groups array
+     * @param {Object} data - The group data.
+     * @throws {AppError} If capacity is not greater than 0 or starting date is in the past.
+     * @returns {Promise<Group>} The newly created group.
      */
     async createGroup(data) {
 
@@ -23,6 +25,12 @@ class GroupService extends BaseService {
         }
 
         const group = await super.create(data);
+
+        // Add group to course's groups array
+        await this.courseModel.findByIdAndUpdate(
+            data.courseId,
+            { $push: { groups: group._id } }
+        );
 
         return group;
     }
@@ -103,7 +111,6 @@ class GroupService extends BaseService {
      * @returns {Promise<Group>} - The updated group
      * @throws {badRequest} - If capacity is less than current students count
      */
-
     async updateGroupById(id, data, userId, userRole) {
         const group = await super.findById(id);
 
@@ -129,14 +136,12 @@ class GroupService extends BaseService {
     }
 
 
-
     /**
      * Delete a group by ID
      * @param {string} id - The ID of the group to delete
      * @returns {Promise<Object>} - Object containing a success message
      * @throws {badRequest} - If the group has already enrolled students
      */
-
     async deleteGroupById(id, userId, userRole) {
         const group = await super.findById(id);
 
@@ -152,6 +157,14 @@ class GroupService extends BaseService {
         if (group.studentsCount > 0) {
             throw AppError.badRequest("You can't delete a group that already has enrolled students");
         }
+
+        // Remove group from course's groups array
+        await this.courseModel.findByIdAndUpdate(
+            group.courseId,
+            { $pull: { groups: id } }
+        );
+
+        // Delete group
         await super.deleteById(id);
 
         return { message: "Group deleted successfully" };

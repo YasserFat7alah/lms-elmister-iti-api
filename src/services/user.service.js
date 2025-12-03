@@ -1,4 +1,4 @@
-import User from "../models/User.js";
+import User from "../models/users/User.js";
 import AppError from "../utils/app.error.js";
 import BaseService from "./base.service.js";
 import cloudinaryService from "./cloudinary.service.js";
@@ -15,8 +15,15 @@ export class UserService extends BaseService {
      * @returns {object} The user profile
      * @throws {AppError} If the user is not found
      */
-    async getMe(userId) {
-        let user = await this.findById(userId);
+    async getMe(userId, role) {
+        let query = this.model.findById(userId);
+
+        if (role !== 'admin') query.populate(`${role}Data`);
+
+        let user = await query.lean();
+        if (!user) throw AppError.notFound(`User with id ${userId} not found`);
+
+        user = { ...user, ...user[role + 'Data'] };
         user = this.sanitize(user);
         return user;
     }
@@ -33,7 +40,7 @@ export class UserService extends BaseService {
         
         if (avatarFile) {
 
-            const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/");
+            const uploadResult = await cloudinaryService.upload(avatarFile, "users/avatars/", { resource_type: "image" });
             
             if (avatar.publicId && uploadResult.publicId) {
                 await cloudinaryService.delete(avatar.publicId, avatar.type);
