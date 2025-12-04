@@ -18,19 +18,7 @@ const GroupSchema = new mongoose.Schema({
         enum: ["online", "offline", "hybrid"],
         required: true,
     },
-    isFree: {
-        type: Boolean,
-        default: false,
-    },
-    price: {
-        type: Number,
-        default: 0,
-        min: 0,
-        required: function () {
-            return !this.isFree;
-        },
-    },
-
+    
     startingDate: {
         type: Date,
         required: true,
@@ -76,7 +64,7 @@ const GroupSchema = new mongoose.Schema({
         enum: ["open", "closed"],
         default: "open",
     },
-
+    
     location: {
         type: String,
         required: function () {
@@ -89,13 +77,13 @@ const GroupSchema = new mongoose.Schema({
             return this.type === "online";
         }
     },
-
+    
     courseId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Course",
         required: true,
     },
-
+    
     teacherId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -107,6 +95,49 @@ const GroupSchema = new mongoose.Schema({
         ref: "User",
     }],
 
+    /* --- --- --- STRIPE --- --- --- */
+    isFree: {
+        type: Boolean,
+        default: false,
+    },
+
+    price: {
+        type: Number,
+        default: 0,
+        min: 0,
+        required: function () {
+            return !this.isFree;
+        },
+    },
+
+    currency: {
+        type: String,
+        default: "usd",
+        lowerCase: true,
+        minlength: 3,
+        maxlength: 3,
+    },
+
+    stripe: {
+        productId:{
+            type: String,
+        },
+
+        priceId: {
+            type: String,
+        },
+
+        price: {
+            type: Number,
+        },
+
+        billingInterval: {
+        type: String,
+        enum: ["month"],
+        default: "month",
+        },
+    }
+    
 }, { timestamps: true });
 
 //....................VIRTUAL FIELDS.....................
@@ -118,7 +149,7 @@ GroupSchema.virtual('availableSeats').get(function () {
 GroupSchema.pre("save", function (next) {
     // sync studentsCount
     this.studentsCount = this.students.length;
-
+    
     //sync status with capacity
     if (this.studentsCount >= this.capacity) {
         this.status = "closed";

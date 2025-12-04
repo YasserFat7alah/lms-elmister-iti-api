@@ -7,6 +7,7 @@ const StudentProfileSchema = new mongoose.Schema({
     ref: "User",
     required: true,
     unique: true,
+    index: true,
   },
 
   grade: {
@@ -24,6 +25,7 @@ const StudentProfileSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+    index: true
   },
 
   approved: {
@@ -33,8 +35,7 @@ const StudentProfileSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-StudentProfileSchema.index({ user: 1 }, { unique: true });
-StudentProfileSchema.index({ parent: 1 });
+StudentProfileSchema.index({ user: 1, parent: 1 }, { unique: true });
 
 export default mongoose.model("StudentProfile", StudentProfileSchema);
 
