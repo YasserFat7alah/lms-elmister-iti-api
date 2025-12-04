@@ -22,13 +22,13 @@ app.use(passport.initialize());
 
 app.use(cors({
     origin: CLIENT_URL || 'http://localhost:3000', // or '*' for dev
-    //methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-    //allowedHeaders: ['Content-Type','Authorization'],
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization'],
     credentials: true, // if sending cookies
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-//app.use(cookieParser());
+app.use(cookieParser());
 
 /* --- --- --- END POINTS --- --- --- */
 app.use("/api/v1/auth",authRouter);
