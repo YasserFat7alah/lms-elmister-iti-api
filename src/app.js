@@ -11,6 +11,9 @@ import { authRouter } from "./routes/auth.routes.js";
 import { groupRouter } from "./routes/group.routes.js";
 import { userRouter } from "./routes/user.routes.js";
 import { teacherRouter } from "./routes/users/teacher.routes.js";
+import { enrollmentRouter } from "./routes/enrollment.routes.js";
+import { payoutRouter } from "./routes/payout.routes.js";
+import enrollmentController from "./controllers/enrollment.controller.js";
 
 const app = express();
 
@@ -19,6 +22,12 @@ connectDB();
 
 /* --- --- --- MIDDLEWARES --- --- --- */
 app.use(passport.initialize());
+
+app.post(
+    "/api/v1/enrollments/stripe/webhook",
+    express.raw({ type: "application/json" }),
+    enrollmentController.handleStripeWebhook
+);
 
 app.use(cors({
     origin: CLIENT_URL || 'http://localhost:3000', // or '*' for dev
@@ -36,6 +45,8 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/teachers", teacherRouter);
 app.use("/api/v1/courses", courseRouter);
 app.use("/api/v1/groups", groupRouter);
+app.use("/api/v1/enrollments", enrollmentRouter);
+app.use("/api/v1/payouts", payoutRouter);
 
 
 

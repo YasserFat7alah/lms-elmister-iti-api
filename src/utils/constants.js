@@ -25,6 +25,7 @@ export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // ===> Third-Party Services
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 export const CLOUDINARY_URL = process.env.CLOUDINARY_URL;
 
 // ===> Nodemailer Configuration

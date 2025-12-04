@@ -15,6 +15,8 @@ A comprehensive Learning Management System (LMS) API built with Node.js, Express
   - [Users](#users)
   - [Courses](#courses)
   - [Groups](#groups)
+  - [Subscriptions & Payments](#subscriptions--payments)
+  - [Teacher Payouts](#teacher-payouts)
 - [Data Models](#data-models)
 - [Authentication & Authorization](#authentication--authorization)
 - [Third-Party Integrations](#third-party-integrations)
@@ -49,6 +51,16 @@ A comprehensive Learning Management System (LMS) API built with Node.js, Express
   - Schedule management
   - Capacity and enrollment tracking
   - Group status (open/closed)
+
+- **Stripe Subscriptions & Billing**
+  - Monthly recurring subscriptions per group
+  - Automatic invoicing with Stripe webhooks
+  - Built-in 10% platform fee tracking
+
+- **Teacher Payouts**
+  - Teachers can claim their available balance
+  - Admin workflow to approve or reject payout requests
+  - Balance adjustments reflected on teacher profiles
 
 - **Email Services**
   - Email verification
@@ -131,6 +143,7 @@ CLOUDINARY_URL=your_cloudinary_url
 
 # Stripe
 STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 
 # Email Configuration (Nodemailer)
 SMTP_SERVICE=gmail
@@ -438,6 +451,81 @@ All group endpoints are prefixed with `/api/v1/groups`.
 - **Auth**: Required (Teacher/Admin)
 - **Params**: `id` - Group ID
 
+### Subscriptions & Payments
+
+All subscription endpoints are prefixed with `/api/v1/subscriptions`.
+
+#### Start a Group Subscription
+- **POST** `/api/v1/subscriptions/groups/:groupId/subscribe`
+- **Description**: Charge a monthly Stripe subscription for one of the parent's students to join the specified group.
+- **Auth**: Required (Parent)
+- **Body**:
+  ```json
+  {
+    "studentId": "66f1b8c2c4d1f4b25e9e1234",
+    "paymentMethodId": "pm_1Nc5bSDp9..."
+  }
+  ```
+- **Response**: Local subscription record plus `clientSecret` for confirming the first payment intent.
+- **Notes**:
+  - The selected student must belong to the authenticated parent (based on `StudentProfile.parent`).
+  - Stripe products/prices are generated per group automatically.
+  - Each successful invoice logs both the teacher share (90%) and the platform fee (10%).
+
+#### List My Subscriptions
+- **GET** `/api/v1/subscriptions/me`
+- **Description**: List subscriptions created by the authenticated parent.
+- **Auth**: Required (Parent)
+
+#### Cancel Subscription
+- **DELETE** `/api/v1/subscriptions/:subscriptionId`
+- **Description**: Schedule cancellation at the end of the current billing period.
+- **Auth**: Required (Parent)
+
+#### Stripe Webhook
+- **POST** `/api/v1/subscriptions/stripe/webhook`
+- **Description**: Receives Stripe events (`invoice.payment_succeeded`, `customer.subscription.updated`, etc.) to update local records, credit teachers, and enroll students after payment succeeds.
+- **Auth**: None (Stripe only) — raw body is required; configure `STRIPE_WEBHOOK_SECRET`.
+
+### Teacher Payouts
+
+All payout endpoints are prefixed with `/api/v1/payouts`.
+
+#### Create Payout Request
+- **POST** `/api/v1/payouts/claim`
+- **Description**: Move part of the teacher's available balance into a payout request after deducting the platform fee (already handled on each invoice).
+- **Auth**: Required (Teacher)
+- **Body**:
+  ```json
+  {
+    "amount": 120.5,
+    "note": "October earnings"
+  }
+  ```
+
+#### List My Payout Requests
+- **GET** `/api/v1/payouts/me`
+- **Description**: View the teacher's payout history and statuses.
+- **Auth**: Required (Teacher)
+
+#### Admin: List Payout Requests
+- **GET** `/api/v1/payouts?status=pending`
+- **Description**: Review payout queue, optionally filtered by status (`pending`, `approved`, `paid`, `rejected`).
+- **Auth**: Required (Admin)
+
+#### Admin: Update Payout Status
+- **PATCH** `/api/v1/payouts/:payoutId`
+- **Description**: Approve, pay, or reject a payout. Rejecting restores the amount to the teacher's available balance, paying stores the payout timestamp and optional banking references.
+- **Auth**: Required (Admin)
+- **Body**:
+  ```json
+  {
+    "status": "paid",
+    "adminNote": "Transferred via bank wire",
+    "referenceIds": ["payout_tx_123"]
+  }
+  ```
+
 ### Health Check
 
 #### Ping
@@ -492,6 +580,8 @@ All group endpoints are prefixed with `/api/v1/groups`.
 - `type` (Enum: online, offline, hybrid, required)
 - `isFree` (Boolean, default: false)
 - `price` (Number, min: 0, required if not free)
+- `currency` (String, 3-letter uppercase, default: USD)
+- `billingInterval` (String, currently `month`)
 - `startingDate` (Date, required)
 - `startingTime` (String, required)
 - `duration` (Number, required) - in minutes
@@ -504,8 +594,35 @@ All group endpoints are prefixed with `/api/v1/groups`.
 - `courseId` (ObjectId, ref: Course, required)
 - `teacherId` (ObjectId, ref: User, required)
 - `students` (Array of ObjectIds, ref: User)
+- `stripeProductId` / `stripePriceId` / `stripePriceAmount` (Stripe billing metadata)
 - `timestamps` (createdAt, updatedAt)
 - `availableSeats` (Virtual: capacity - studentsCount)
+
+### Subscription Model
+- `parent` (ObjectId, ref: User)
+- `student` (ObjectId, ref: User)
+- `group` (ObjectId, ref: Group)
+- `course` (ObjectId, ref: Course)
+- `teacher` (ObjectId, ref: User)
+- `amount` (Number) — monthly list price
+- `currency` (String) — defaults to USD
+- `status` (Enum: incomplete, trialing, active, past_due, canceled, unpaid)
+- `stripeCustomerId` / `stripeSubscriptionId` / `stripePriceId`
+- `currentPeriodStart` / `currentPeriodEnd`
+- `cancelAtPeriodEnd`, `canceledAt`
+- `charges[]` — ledger of Stripe invoices (gross amount, teacher share, platform fee, paidAt)
+
+### Payout Model
+- `teacher` (ObjectId, ref: User)
+- `amount` (Number) — net value requested
+- `currency` (String, default USD)
+- `status` (Enum: pending, approved, paid, rejected)
+- `requestedBy` / `approvedBy` (ObjectId, refs: User)
+- `teacherNote`, `adminNote`
+- `paidAt` timestamp
+- `referenceIds[]` (external transaction identifiers)
+- `period` (start/end) for bookkeeping
+- `platformFeeSnapshot` (Number) for audit purposes
 
 ## Authentication & Authorization
 
@@ -537,8 +654,9 @@ Authorization: Bearer <access_token>
 - Provides optimized image URLs
 
 ### Stripe
-- Payment processing integration
-- Configured for course and group payments
+- Handles all recurring group subscriptions
+- Stripe Products/Prices are auto-provisioned per group
+- Webhook (`/api/v1/subscriptions/stripe/webhook`) records invoices, credits teacher balances, and tracks the 10% platform fee
 
 ### Nodemailer
 - Email service for:
@@ -567,7 +685,8 @@ src/
 │   ├── user.controller.js
 │   ├── course.controller.js
 │   ├── group.controller.js
-│   └── ...
+│   ├── subscription.controller.js
+│   └── payout.controller.js
 ├── middlewares/           # Custom middlewares
 │   ├── auth.middleware.js
 │   ├── error.middleware.js
@@ -577,19 +696,22 @@ src/
 │   ├── User.js
 │   ├── Course.js
 │   ├── Group.js
-│   └── ...
+│   ├── Subscription.js
+│   └── Payout.js
 ├── routes/                # API routes
 │   ├── auth.routes.js
 │   ├── user.routes.js
 │   ├── course.routes.js
 │   ├── group.routes.js
-│   └── ...
+│   ├── subscription.routes.js
+│   └── payout.routes.js
 ├── services/              # Business logic
 │   ├── auth.service.js
 │   ├── user.service.js
 │   ├── course.service.js
 │   ├── mail.service.js
-│   └── ...
+│   ├── subscription.service.js
+│   └── payout.service.js
 ├── utils/                 # Utility functions
 │   ├── app.error.js
 │   ├── constants.js
