@@ -21,15 +21,15 @@ export class MulterUploader {
                 "application/pdf",
             ];
 
-        if (allowed.includes(file.mimetype)) cb(null, true);
-        else cb(new Error("Invalid file type"), false);
+            if (allowed.includes(file.mimetype)) cb(null, true);
+            else cb(new Error("Invalid file type"), false);
         };
 
-        this.upload = multer({ 
-            storage: this.storage   ,
+        this.upload = multer({
+            storage: this.storage,
             limits: { fileSize: 150 * 1024 * 1024 }, // 5MB limit
 
-            fileFilter: this.fileFilter  
+            fileFilter: this.fileFilter
         });
     }
 
@@ -50,6 +50,10 @@ export class MulterUploader {
      */
     multiple(fieldName, max = 5) {
         return this.upload.array(fieldName, max);
+    }
+
+    fields(fieldsArray) {
+        return this.upload.fields(fieldsArray);
     }
 }
 
