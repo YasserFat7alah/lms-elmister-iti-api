@@ -25,19 +25,19 @@ const lessonController = new LessonController(lessonService)
 router.use(authenticate);
 
 //create lesson
-router.post("/", authorize("teacher", "admin"), validate(createLessonSchema),uploadFiles, lessonController.createLesson);
+router.post("/", authorize("teacher", "admin"),uploadFiles, validate(createLessonSchema), lessonController.createLesson);
 
 //getlessons by group (all lessons inside a specific group)
 router.get("/group/:groupId", lessonController.getLessonsByGroup);
 
 //update a lesson
-router.patch("/:id", authorize("teacher", "admin"), validate(updateLessonSchema),uploadFiles, lessonController.updateLesson);
+router.patch("/:id", authorize("teacher", "admin"),uploadFiles, validate(updateLessonSchema), lessonController.updateLesson);
 
-//delete a lesson
+//delete a lesson and its content
 router.delete("/:id", authorize("teacher", "admin"), lessonController.deleteLesson);
-// Delete video
+// Delete video from a lesson
 router.delete("/:id/video", authorize("teacher", "admin"), lessonController.deleteVideo);
-// Delete document
+// Delete document[] from a lesson
 router.delete("/:id/document/:docId", authorize("teacher", "admin"), lessonController.deleteDocument);
 
 //reorder lessons

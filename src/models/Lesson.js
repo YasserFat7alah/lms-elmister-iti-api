@@ -25,11 +25,13 @@ const LessonSchema = new mongoose.Schema(
         video: {
             url: { type: String },
             publicId: { type: String },
+            resourceType: { type: String, default: "video" }
         },
 
         document: [{
             url: { type: String },
             publicId: { type: String },
+            resourceType: { type: String, default: "raw" }
         }],
 
         groupId: {

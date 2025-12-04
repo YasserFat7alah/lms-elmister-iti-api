@@ -11,6 +11,7 @@ export const createLessonSchema = Joi.object({
     type: Joi.string().valid('video', 'document', 'live', 'offline').default('offline'),
     order: Joi.number().required().min(0),
     status: Joi.string().valid('draft', 'published', 'archived').default('draft'),
+    groupId: Joi.string().required(),
 });
 
 export const updateLessonSchema = Joi.object({
@@ -22,4 +23,5 @@ export const updateLessonSchema = Joi.object({
     type: Joi.string().valid('video', 'document', 'live', 'offline'),
     order: Joi.number().min(0),
     status: Joi.string().valid('draft', 'published', 'archived'),
+    groupId: Joi.string(),
 })
