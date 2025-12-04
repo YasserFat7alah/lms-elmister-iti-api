@@ -1,27 +1,35 @@
 import multer from "multer";
 
-class MulterUploader {
+export class MulterUploader {
     constructor() {
         this.storage = multer.memoryStorage();
         this.fileFilter = (req, file, cb) => {
             const allowed = [
                 "image/jpeg",
+                "image/jpg",
                 "image/png",
                 "image/webp",
+                "image/gif",
+                "image/svg+xml",
+                "image/tiff",
                 "video/mp4",
+                "video/mov",
+                "video/avi",
+                "video/wmv",
+                "video/flv",
                 "video/quicktime",
                 "application/pdf",
             ];
 
-        if (allowed.includes(file.mimetype)) cb(null, true);
-        else cb(new Error("Invalid file type"), false);
+            if (allowed.includes(file.mimetype)) cb(null, true);
+            else cb(new Error("Invalid file type"), false);
         };
 
-        this.upload = multer({ 
-            storage: this.storage   ,
-            limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+        this.upload = multer({
+            storage: this.storage,
+            limits: { fileSize: 150 * 1024 * 1024 }, // 5MB limit
 
-            fileFilter: this.fileFilter  
+            fileFilter: this.fileFilter
         });
     }
 
@@ -43,7 +51,10 @@ class MulterUploader {
     multiple(fieldName, max = 5) {
         return this.upload.array(fieldName, max);
     }
+
+    fields(fieldsArray) {
+        return this.upload.fields(fieldsArray);
+    }
 }
 
-const multerMiddleware = new MulterUploader();
-export default multerMiddleware;
+export default new MulterUploader();

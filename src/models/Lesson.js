@@ -1,54 +1,57 @@
 import mongoose from "mongoose";
 
-const LessonSchema = new mongoose.Schema({
+const LessonSchema = new mongoose.Schema(
+    {
+        title: {
+            type: String,
+            required: true,
+            trim: true,
+            minlength: 5,
+            maxlength: 150,
+        },
 
-    course: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Course",
-        required: true,
-    },
+        description: {
+            type: String,
+            trim: true,
+            maxlength: 500,
+        },
 
-    title: {
-        type: String,
-        required: true,
-        trim: true,
-    },
+        type: {
+            type: String,
+            enum: ["video", "document", "live", "offline"],
+            default: "offline",
+        },
 
-    description: {
-        type: String,
-        trim: true,
-    },
-    isPaid: {
-        type: Boolean,
-        default: false
-    },
-    price: {
-        type: Number,
-        required: function () {
-            return this.isPaid
+        video: {
+            url: { type: String },
+            publicId: { type: String },
+        },
+
+        document: [{
+            url: { type: String },
+            publicId: { type: String },
+        }],
+
+        groupId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Group",
+            required: true,
+        },
+        order: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+
+        status: {
+            type: String,
+            enum: ["draft", "published", "archived"],
+            default: "draft"
         }
-    },
 
-    type: {
-        type: String,
-        enum: ["video", "document", "live", "offline"],
-        default: "offline",
-    },
+    }, { timestamps: true });
 
-    video: {
-        url:{type: String},
-        publicId:{type: String}
-    },
-    
-    document: {
-        url:{type: String},
-        publicId:{type: String}
-    },
-    //live??
+LessonSchema.index({ groupId: 1, order: 1 }, { unique: true });
 
-    startTime: Date,
-    endTime: Date,
-    
-}, { timestamps: true });
 
 export default mongoose.model("Lesson", LessonSchema);

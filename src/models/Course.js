@@ -11,6 +11,11 @@ const CourseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 150,
     },
+    subTitle: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+    },
 
     description: {
       type: String,
@@ -42,20 +47,6 @@ const CourseSchema = new mongoose.Schema(
       default: "draft",
     },
 
-    pricing: {
-      isPaid: { type: Boolean, default: false },
-
-      price: {
-        type: Number,
-        min: 0,
-        required: function () {
-          return this.pricing?.isPaid;
-        },
-      },
-
-      currency: { type: String, default: "USD" },
-    },
-
     language: {
       type: String,
       default: "English",
@@ -85,7 +76,7 @@ const CourseSchema = new mongoose.Schema(
       max: 5,
     },
 
-    totalReviews: {
+    ratingsCount: {
       type: Number,
       default: 0,
     },
@@ -95,10 +86,6 @@ const CourseSchema = new mongoose.Schema(
       default: 0,
     },
 
-    totalLessons: {
-      type: Number,
-      default: 0,
-    },
   },
   { timestamps: true }
 );
