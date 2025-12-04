@@ -25,19 +25,14 @@ const LessonSchema = new mongoose.Schema(
         video: {
             url: { type: String },
             publicId: { type: String },
-            required: function () {
-                return this.type === "video";
-            }
         },
 
-        document: {
+        document: [{
             url: { type: String },
             publicId: { type: String },
-            required: function () {
-                return this.type === "document";
-            }
-        },
-        group: {
+        }],
+
+        groupId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Group",
             required: true,

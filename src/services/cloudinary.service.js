@@ -31,6 +31,7 @@ export class CloudinaryService {
         ...options,},
         (error, result) => {
         if (error) reject(error);
+        if(!result) reject(new Error("Cloudinary returned empty result"));
         resolve({
           url: result.secure_url,
           publicId: result.public_id,
