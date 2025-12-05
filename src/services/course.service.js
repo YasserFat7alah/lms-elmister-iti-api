@@ -76,8 +76,8 @@ class CourseService extends BaseService {
     async getCourseById(_id) {
         const course = await this.model
             .findById(_id)
-            .populate('teacherId', 'name username')
-            .populate('groups', 'title startingDate capacity studentsCount status');
+            .populate('teacherId')
+            .populate('groups');
 
         if (!course) {
             throw AppError.notFound("Course not found");
