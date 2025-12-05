@@ -151,7 +151,7 @@ export class AuthService extends BaseService {
       await StudentProfile.create({
         user: userId,
         grade: grade,
-        parent: data.parentId,
+        parent: data.parent,
       });
       
     } else if (role === "parent") {
@@ -287,7 +287,6 @@ export class AuthService extends BaseService {
    */
   async handleOauthLogin({ provider, providerId, email, name, avatar }) {
     if (!provider || !providerId || !email) {
-      console.log(provider, providerId, email);
       throw AppError.badRequest("OAuth authentication failed - missing data.");
     }
 
