@@ -1,6 +1,7 @@
 import BaseService from "./base.service.js";
 import Group from "../models/Group.js";
 import AppError from "../utils/app.error.js";
+import paymentService from "./payment.service.js";
 
 class GroupService extends BaseService {
     constructor(model, courseModel) {
@@ -22,6 +23,22 @@ class GroupService extends BaseService {
 
         if (data.startingDate && new Date(data.startingDate) < new Date()) {
             throw AppError.badRequest("Starting date cannot be in the past");
+        }
+
+        if (!data.isFree && data.price > 0) {
+
+            const stripeData = await paymentService.registerProduct(
+                data.title, 
+                data.price, 
+                data.currency || 'usd'
+            );
+
+            data.stripe = {
+                productId: stripeData.productId,
+                priceId: stripeData.priceId,
+                price: stripeData.price,
+                billingInterval: stripeData.billingInterval
+            };
         }
 
         const group = await super.create(data);

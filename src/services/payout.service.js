@@ -28,9 +28,11 @@ class PayoutService {
       );
     }
 
-    if (teacherProfile.balance < amount) {
+    // Check if teacher has enough pending payouts
+    const availableBalance = teacherProfile.pendingPayouts || 0;
+    if (availableBalance < amount) {
       throw AppError.badRequest(
-        `Requested amount (${amount}) exceeds your available balance (${teacherProfile.balance})`
+        `Requested amount (${amount}) exceeds your available balance (${availableBalance})`
       );
     }
 

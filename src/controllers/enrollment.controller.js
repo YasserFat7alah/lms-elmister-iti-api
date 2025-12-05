@@ -8,16 +8,19 @@ class EnrollmentController {
   }
 
   /** Parent enrolls one of their students into a group (Stripe subscription) */
-  enroll = asyncHandler(async (req, res) => {
+  createCheckoutSession = asyncHandler(async (req, res) => {
     const user = req.user;
     if (user.role !== "parent") {
       throw AppError.forbidden("Only parents can enroll students into groups");
     }
 
-    const { studentId, paymentMethodId } = req.body;
+    const { studentId } = req.body;
     const { groupId } = req.params;
 
-    const data = await this.service.enroll(user, { groupId, studentId, paymentMethodId });
+    if(!studentId) throw AppError.badRequest("Student ID is required for enrollment");
+    if(!groupId) throw AppError.badRequest("Group ID is required");
+    
+    const data = await this.service.subscribe(user, studentId, groupId);
 
     res.status(201).json({
       success: true,

@@ -21,18 +21,21 @@ const EnrollmentSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     student: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     teacher: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     /* --- --- --- COURSE --- --- --- */
@@ -56,8 +59,6 @@ const EnrollmentSchema = new Schema(
 
     subscriptionId: {
       type: String,
-      required: true,
-      unique: true,
     },
 
     priceId: {
@@ -105,7 +106,7 @@ const EnrollmentSchema = new Schema(
     currency: {
       type: String,
       default: "usd",
-      uppercase: true,
+      lowercase: true,
     },
 
     receiptURL: {
@@ -121,7 +122,8 @@ const EnrollmentSchema = new Schema(
   { timestamps: true }
 );
 
-EnrollmentSchema.index({ student: 1, group: 1, status: 1 });
+EnrollmentSchema.index({ student: 1, course: 1 }, { unique: true });
+EnrollmentSchema.index({ student: 1, course: 1, status: 1 });
 EnrollmentSchema.index({ subscriptionId: 1 });
 
 export default mongoose.model("Enrollment", EnrollmentSchema);

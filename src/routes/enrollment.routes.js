@@ -1,22 +1,22 @@
 import express from "express";
 import enrollmentController from "../controllers/enrollment.controller.js";
-import auth from "../middlewares/auth.middleware.js";
+import authMiddleware from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.use(auth.authenticate);
+const { authenticate, authorize } = authMiddleware;
 
-router.post(
-  "/groups/:groupId/enroll",
-  auth.authorize("parent"),
-  enrollmentController.enroll
+router.use(authenticate);
+
+router.post("/checkout/:groupId", authorize("parent"),
+  enrollmentController.createCheckoutSession
 );
 
-router.get("/me", auth.authorize("parent"), enrollmentController.listMine);
+router.get("/me", authorize("parent"), enrollmentController.listMine);
 
 router.delete(
   "/:enrollmentId",
-  auth.authorize("parent"),
+  authorize("parent"),
   enrollmentController.cancel
 );
 

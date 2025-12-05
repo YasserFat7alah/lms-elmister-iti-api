@@ -30,7 +30,6 @@ class MailService {
         console.error("Error sending email:", error);
         throw new Error("Failed to send email");
       } else {
-        console.log("Email sent:", info.response);
         return info;
       }
     });

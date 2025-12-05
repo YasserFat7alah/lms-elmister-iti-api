@@ -25,6 +25,7 @@ const LessonSchema = new mongoose.Schema(
         video: {
             url: { type: String },
             publicId: { type: String },
+            type: { type: String }
         },
 
         document: [{

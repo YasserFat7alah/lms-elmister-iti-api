@@ -15,9 +15,7 @@ export const registerSchema = joi.object({
         'any.required': 'Password is required',
         'string.min': 'Password must be at least 8 characters long'
     }),
-    age: joi.number().required().min(5).max(80).messages({
-        'string.empty': 'Age is required',
-        'any.required': 'Age is required',
+    age: joi.number().min(5).max(80).messages({
         'number.min': 'Age must be at least 5 years old',
         'number.max': 'Age must be less than 80 years old'
     }),

@@ -151,7 +151,7 @@ export class AuthService extends BaseService {
       await StudentProfile.create({
         user: userId,
         grade: grade,
-        parent: data.parentId,
+        parent: data.parent,
       });
       
     } else if (role === "parent") {

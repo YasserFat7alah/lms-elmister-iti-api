@@ -11,6 +11,7 @@ const CourseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 150,
     },
+
     subTitle: {
       type: String,
       trim: true,
@@ -22,6 +23,12 @@ const CourseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000,
     },
+
+    features: [{
+      type: String,
+      trim: true,
+      maxlength:300,
+    }],
 
     thumbnail: {
       url: { type: String },
@@ -50,6 +57,7 @@ const CourseSchema = new mongoose.Schema(
     language: {
       type: String,
       default: "English",
+      lowercase: true,
     },
 
     tags: [{ type: String, trim: true }],

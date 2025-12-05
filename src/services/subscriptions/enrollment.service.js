@@ -6,11 +6,12 @@ import User from "../../models/users/User.js";
 import ParentProfile from "../../models/users/ParentProfile.js";
 import StudentProfile from "../../models/users/StudentProfile.js";
 import TeacherProfile from "../../models/users/TeacherProfile.js";
-import { STRIPE_WEBHOOK_SECRET } from "../../utils/constants.js";
+import { CLIENT_URL, STRIPE_WEBHOOK_SECRET } from "../../utils/constants.js";
+import paymentService from "../payment.service.js";
 
 class EnrollmentService {
   constructor() {
-    this.activeStatuses = ["incomplete", "trialing", "active", "past_due"];
+    this.activeStatuses = ["trialing", "active", "past_due"];
     this.platformFee = 0.1;
   }
 
@@ -19,17 +20,18 @@ class EnrollmentService {
    * @param {object} data - { studentId, groupId, paymentMethodId }
    * @returns {{ enrollment, clientSecret, stripeStatus }}
    */
-  async subscribe(parent, data) {
+  async subscribe(parent, studentId, groupId) {
     const parentId = parent._id || parent.id;
-    const { studentId, groupId, paymentMethodId } = data;
 
-    if (!studentId || !groupId || !paymentMethodId) {
+    // Vaidate data input
+    if (!studentId || !groupId ) {
       throw AppError.badRequest(
-        "groupId, studentId and paymentMethodId are required!"
+        "groupId, studentId are required!"
       );
     }
 
-    const group = await Group.findById(groupId);
+    // Validate group availability
+    const group = await Group.findById(groupId).populate("courseId");
     if (!group) throw AppError.notFound("Group not found");
 
     if (group.isFree) {
@@ -43,12 +45,14 @@ class EnrollmentService {
       );
     }
 
-    if (group.studentsCount >= group.capacity) {
-      throw AppError.conflict("Group is already full");
+    if (group.studentsCount >= group.capacity || group.status === "closed") {
+      throw AppError.conflict("Group is full or closed for enrollments");
     }
 
+    
+    // Validate student data
     const student = await User.findOne({ _id: studentId, role: "student" });
-    if (!student) throw AppError.badRequest("Invalid student!");
+    if (!student) throw AppError.badRequest("Invalid student");
 
     const studentProfile = await StudentProfile.findOne({
       user: studentId,
@@ -58,63 +62,56 @@ class EnrollmentService {
       throw AppError.forbidden("This student is not linked to your account!");
     }
 
-    const existingEnrollment = await Enrollment.findOne({
+    let enrollment = await Enrollment.findOne({
       student: studentId,
-      group: groupId,
-      status: { $in: this.activeStatuses },
+      course: group.courseId,
     });
-    if (existingEnrollment) {
+    if (enrollment && enrollment.status === "active") {
       throw AppError.conflict(
-        "This student already has an active subscription for this group"
+        "This student already has an active subscription for this course"
       );
     }
-
     const parentProfile = await this.getParentProfile(parentId);
     const stripeCustomerId = await this.getCustomerId(parent, parentProfile);
-    const paymentMethod = await this.usePaymentMethod(
-      stripeCustomerId,
-      paymentMethodId,
-      parentProfile
-    );
     const stripePriceId = await this.getPriceId(group);
 
-    const subscription = await stripe.subscriptions.create({
-      customer: stripeCustomerId,
-      items: [{ price: stripePriceId }],
-      default_payment_method: paymentMethod,
-      payment_behavior: "default_incomplete",
-      expand: ["latest_invoice.payment_intent"],
-      metadata: {
-        groupId: groupId,
-        studentId,
-        parentId,
-      },
-    });
-
-    const enrollment = await Enrollment.create({
+    if(!enrollment) {
+    enrollment = await Enrollment.create({
       parent: parentId,
       student: studentId,
       teacher: group.teacherId,
       group: groupId,
-      course: group.courseId,
+      course: group.courseId._id,
       customerId: stripeCustomerId,
-      subscriptionId: subscription.id,
       priceId: stripePriceId,
-      currentPeriodStart: this.updateDate( subscription.current_period_start, new Date()),
-      currentPeriodEnd: this.updateDate( subscription.current_period_end),
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      status: subscription.status,
+      status: 'incomplete',
       amount: group.price,
       currency: group.currency || "usd",
     });
+  }
+    
+    const session = await paymentService.createCheckoutSession({
+      customerId: stripeCustomerId,
+      priceId: stripePriceId,
+      successUrl: `${CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${CLIENT_URL}/payment/canceled`,
+      metadata: { 
+        enrollmentId: enrollment._id.toString(),
+        groupId: groupId.toString(),
+        studentId: studentId.toString(),
+        teacherId: group.teacherId.toString(),
+        parentId: parentId.toString(),
+        courseId: group.courseId._id.toString()
+      },
+    });
 
-    const clientSecret =
-      subscription.latest_invoice?.payment_intent?.client_secret || null;
-
+    // Store checkout session ID temporarily (will be replaced with subscription ID on completion)
+    enrollment.subscriptionId = session.id;
+    await enrollment.save();
+    
     return {
+      url: session.url,
       enrollment,
-      clientSecret,
-      stripeStatus: subscription.status,
     };
   }
 
@@ -243,6 +240,7 @@ class EnrollmentService {
    * */
   async getPriceId(group) {
     if (!group.stripe) group.stripe = {};
+    
 
     if (group.stripe.priceId && group.stripe.price === group.price) {
       return group.stripe.priceId;
@@ -253,7 +251,7 @@ class EnrollmentService {
         name: `${group.title} (${group._id.toString()})`,
         metadata: {
           groupId: group._id.toString(),
-          courseId: group.courseId?.toString() || "",
+          courseId: group.courseId?._id.toString() || "",
         },
       });
       group.stripe.productId = product.id;
@@ -280,17 +278,13 @@ class EnrollmentService {
    * @param {string} studentId
    * */
   async ensureStudentInGroup(groupId, studentId) {
-    const group = this.find(groupId);
-    if (!group) return;
-
-    const studentsList = group.students || [];
-    const alreadyEnrolled = studentsList.some(
-      (id) => id.toString() === studentId.toString()
+   await Group.updateOne(
+        { _id: groupId, students: { $ne: studentId } }, 
+        { 
+            $push: { students: studentId },
+            $inc: { studentsCount: 1 } 
+        }
     );
-    if (alreadyEnrolled) return;
-
-    group.students.push(studentId);
-    await group.save();
   }
 
   /** Format Stripe Date
@@ -334,7 +328,9 @@ class EnrollmentService {
   }
 
   async syncSubscription(stripeSubscription) {
-    const enrollment = this.find(stripeSubscription.id);
+    const enrollment = await Enrollment.findOne({
+      subscriptionId: stripeSubscription.id,
+    });
     if (!enrollment) return;
 
     enrollment.status = stripeSubscription.status;
@@ -347,7 +343,10 @@ class EnrollmentService {
   }
 
   async markSubscriptionCancelled(stripeSubscription) {
-    const enrollment = this.find(stripeSubscription.id);
+    const enrollment = await Enrollment.findOne({
+      subscriptionId: stripeSubscription.id,
+    });
+    if (!enrollment) return;
 
     enrollment.status = "canceled";
     enrollment.canceledAt = new Date();
@@ -382,18 +381,12 @@ class EnrollmentService {
       currency: invoice.currency || enrollment.currency,
       teacherShare,
       platformFee,
-      paidAt: invoice.status_transitions?.paid_at
-        ? new Date(invoice.status_transitions.paid_at * 1000)
-        : new Date(),
+      paidAt: this.updateDate(invoice.status_transitions?.paid_at, new Date())
     });
 
     enrollment.status = "active";
-    enrollment.currentPeriodStart = invoicePeriod?.start
-      ? new Date(invoicePeriod.start * 1000)
-      : enrollment.currentPeriodStart;
-    enrollment.currentPeriodEnd = invoicePeriod?.end
-      ? new Date(invoicePeriod.end * 1000)
-      : enrollment.currentPeriodEnd;
+    enrollment.currentPeriodStart = this.updateDate(invoicePeriod?.start, new Date());
+    enrollment.currentPeriodEnd = this.updateDate(invoicePeriod?.end, enrollment.currentPeriodEnd);
 
     await enrollment.save();
 

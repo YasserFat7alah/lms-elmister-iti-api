@@ -69,11 +69,9 @@ class AuthController {
      * @access Public
      */
     logout = asyncHandler(async (req, res) => {
-        const token = req.cookies?.refreshToken;
 
-        if (token) {
-             this.authService.clearRefreshCookie(res);
-        }
+        if (req.cookies?.accessToken) this.authService.clearAccessCookie(res);
+        if (req.cookies?.refreshToken) this.authService.clearRefreshCookie(res);
 
         res.status(200).json({
             success: true,

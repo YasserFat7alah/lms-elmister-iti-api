@@ -181,7 +181,7 @@ class LessonService extends BaseService {
         if (!lesson.video?.publicId) return lesson;
 
         // Delete video from cloudinary
-        await cloudinaryService.delete(lesson.video.publicId);
+        await cloudinaryService.delete(lesson.video.publicId, lesson.video.type);
 
         // Remove video from lesson
         lesson.video = undefined;
