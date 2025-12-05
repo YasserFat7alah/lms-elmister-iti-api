@@ -31,7 +31,7 @@ const LessonSchema = new mongoose.Schema(
         document: [{
             url: { type: String },
             publicId: { type: String },
-            resourceType: { type: String, default: "raw" }
+            type: { type: String, default: "raw" }
         }],
 
         groupId: {
