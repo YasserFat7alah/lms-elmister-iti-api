@@ -171,7 +171,7 @@ class AuthController {
      */
     googleCallback = asyncHandler(async (req, res) => {
         const oauthData = req.user;
-        const fallbackURL = req.query.fallbackUrl || `${CLIENT_URL}/auth/login?error=oauth_failed&success=false`;
+        const fallbackURL = req.query.fallbackUrl || `${CLIENT_URL}/login?error=oauth_failed&success=false`;
         
         if (!oauthData || !oauthData.provider || !oauthData.providerId || !oauthData.email) {
             return res.redirect(fallbackURL);
@@ -181,7 +181,7 @@ class AuthController {
         this.authService.setRefreshCookie(res, refreshToken);
 
         // Redirect to frontend with token (or use a different approach)
-        const redirectUrl = `${CLIENT_URL || 'http://localhost:3000'}/auth/login?success=true`;
+        const redirectUrl = `${CLIENT_URL || 'http://localhost:3000'}/login?success=true`;
         this.authService.setAccessCookie(res, accessToken);
         this.authService.setRefreshCookie(res, refreshToken);
         res.redirect(redirectUrl);
