@@ -46,7 +46,7 @@ export class CloudinaryService {
   /** Delete Cloudinary file
    * @param {string} publicId - ID of the asset
    */
-  async delete(publicId,resourceType = "auto") {
+  async delete(publicId, resourceType="auto") {
     return this.cloudinary.uploader.destroy(publicId, {
       resource_type: resourceType,
     });

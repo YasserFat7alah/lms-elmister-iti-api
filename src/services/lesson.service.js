@@ -41,7 +41,7 @@ class LessonService extends BaseService {
             lessonData.video = {
                 url: uploadResult.url,
                 publicId: uploadResult.publicId,
-                resourceType: "video"
+                type: "video"
             };
         }
         // upload documents (array)
@@ -52,7 +52,7 @@ class LessonService extends BaseService {
                 lessonData.document.push({
                     url: uploadResult.url,
                     publicId: uploadResult.publicId,
-                    resourceType: "raw"
+                    type: "raw"
                 });
             }
         }
@@ -133,7 +133,7 @@ class LessonService extends BaseService {
         if (files?.video?.[0]) {
             // Delete old video if exists
             if (lesson.video?.publicId) await cloudinaryService.delete(lesson.video.publicId,
-                lesson.video.resourceType
+                lesson.video.type
             );
 
             const uploadResult = await cloudinaryService.upload(
@@ -144,7 +144,7 @@ class LessonService extends BaseService {
             data.video = {
                 url: uploadResult.url,
                 publicId: uploadResult.publicId,
-                resourceType: "video"
+                type: "video"
             };
         }
 
@@ -156,7 +156,7 @@ class LessonService extends BaseService {
                 newDocs.push({
                     url: uploadResult.url,
                     publicId: uploadResult.publicId,
-                    resourceType: "raw"
+                    type: "raw"
                 });
             }
 
@@ -187,9 +187,8 @@ class LessonService extends BaseService {
         if (!lesson.video?.publicId) return lesson;
 
         // Delete video from cloudinary
-        await cloudinaryService.delete(lesson.video.publicId, 
-           lesson.video.resourceType
-        );
+        await cloudinaryService.delete(lesson.video.publicId, lesson.video.type);
+
         // Remove video from lesson
         lesson.video = undefined;
         return await lesson.save();
@@ -219,7 +218,7 @@ class LessonService extends BaseService {
 
     // Delete document from cloudinary
     await cloudinaryService.delete(lesson.document[docIndex].publicId, 
-         lesson.document[docIndex].resourceType
+         lesson.document[docIndex].type
     );
 
     // Remove document from lesson
@@ -249,7 +248,7 @@ class LessonService extends BaseService {
     // Delete video from cloudinary
     if (lesson.video?.publicId) {
         await cloudinaryService.delete(lesson.video.publicId,
-            lesson.video.resourceType
+            lesson.video.type
         );
     }
 
@@ -257,7 +256,7 @@ class LessonService extends BaseService {
     if (lesson.document?.length) {
         for (const doc of lesson.document) {
             await cloudinaryService.delete(doc.publicId,
-                 doc.resourceType
+                 doc.type
             );
         }
     }

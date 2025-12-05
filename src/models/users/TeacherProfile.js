@@ -76,6 +76,12 @@ const TeacherProfileSchema = new mongoose.Schema(
       min: 0,
     },
 
+    balance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     pendingPayouts: {
       type: Number,
       default: 0,

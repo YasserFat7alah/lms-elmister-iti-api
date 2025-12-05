@@ -15,6 +15,8 @@ A comprehensive Learning Management System (LMS) API built with Node.js, Express
   - [Users](#users)
   - [Courses](#courses)
   - [Groups](#groups)
+  - [Enrollments & Payments](#enrollments--payments)
+  - [Teacher Payouts](#teacher-payouts)
 - [Data Models](#data-models)
 - [Authentication & Authorization](#authentication--authorization)
 - [Third-Party Integrations](#third-party-integrations)
@@ -49,6 +51,16 @@ A comprehensive Learning Management System (LMS) API built with Node.js, Express
   - Schedule management
   - Capacity and enrollment tracking
   - Group status (open/closed)
+
+- **Stripe Subscriptions & Billing**
+  - Monthly recurring subscriptions per group
+  - Automatic invoicing with Stripe webhooks
+  - Built-in 10% platform fee tracking
+
+- **Teacher Payouts**
+  - Teachers can claim their available balance
+  - Admin workflow to approve or reject payout requests
+  - Balance adjustments reflected on teacher profiles
 
 - **Email Services**
   - Email verification
@@ -131,6 +143,7 @@ CLOUDINARY_URL=your_cloudinary_url
 
 # Stripe
 STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 
 # Email Configuration (Nodemailer)
 SMTP_SERVICE=gmail
@@ -164,6 +177,8 @@ All authentication endpoints are prefixed with `/api/v1/auth`.
 #### Register
 - **POST** `/api/v1/auth/register`
 - **Description**: Register a new user
+- **Headers**:
+  - `Content-Type: application/json`
 - **Body**:
   ```json
   {
@@ -178,6 +193,8 @@ All authentication endpoints are prefixed with `/api/v1/auth`.
 #### Login
 - **POST** `/api/v1/auth/login`
 - **Description**: Login with email and password
+- **Headers**:
+  - `Content-Type: application/json`
 - **Body**:
   ```json
   {
@@ -191,16 +208,23 @@ All authentication endpoints are prefixed with `/api/v1/auth`.
 - **POST** `/api/v1/auth/logout`
 - **Description**: Logout user (clears refresh token cookie)
 - **Auth**: Required
+- **Headers**:
+  - `Cookie: refreshToken={{REFRESH_TOKEN}}; accessToken={{ACCESS_TOKEN}}`
 
 #### Refresh Token
 - **POST** `/api/v1/auth/refresh-token`
 - **Description**: Refresh access token using refresh token
 - **Auth**: Required (refresh token in cookie)
+- **Headers**:
+  - `Cookie: refreshToken={{REFRESH_TOKEN}}`
 
 #### Change Password
 - **POST** `/api/v1/auth/change-password`
 - **Description**: Change user password
 - **Auth**: Required
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
+  - `Content-Type: application/json`
 - **Body**:
   ```json
   {
@@ -212,6 +236,8 @@ All authentication endpoints are prefixed with `/api/v1/auth`.
 #### Forgot Password
 - **POST** `/api/v1/auth/forgot-password`
 - **Description**: Request password reset email
+- **Headers**:
+  - `Content-Type: application/json`
 - **Body**:
   ```json
   {
@@ -222,6 +248,8 @@ All authentication endpoints are prefixed with `/api/v1/auth`.
 #### Reset Password
 - **POST** `/api/v1/auth/reset-password`
 - **Description**: Reset password using OTP
+- **Headers**:
+  - `Content-Type: application/json`
 - **Body**:
   ```json
   {
@@ -302,12 +330,17 @@ All user endpoints are prefixed with `/api/v1/users` and require authentication.
 - **GET** `/api/v1/users/me`
 - **Description**: Get authenticated user's profile
 - **Auth**: Required
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
 
 #### Update Current User
 - **PATCH** `/api/v1/users/me`
 - **Description**: Update authenticated user's profile
 - **Auth**: Required
 - **Body**: (multipart/form-data)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
+  - `Content-Type: multipart/form-data`
   ```json
   {
     "name": "John Doe",
@@ -322,6 +355,35 @@ All user endpoints are prefixed with `/api/v1/users` and require authentication.
 - **Auth**: Required
 - **Body**: (multipart/form-data)
   - `avatar`: Image file
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
+  - `Content-Type: multipart/form-data`
+
+### Teacher Profile
+
+All teacher endpoints are prefixed with `/api/v1/teachers` and require `role=teacher`.
+
+#### Upload Teacher Intro Video
+- **PATCH** `/api/v1/teachers/me/video`
+- **Description**: Upload or update teacher intro video
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER}}`
+  - `Content-Type: multipart/form-data`
+- **Body**:
+  - `video`: video file
+
+#### Add Teacher Certificate
+- **POST** `/api/v1/teachers/me/certificates`
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER}}`
+  - `Content-Type: multipart/form-data`
+- **Body**:
+  - `image`: certificate image file
+
+#### Delete Teacher Certificate
+- **DELETE** `/api/v1/teachers/me/certificates/:id`
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER}}`
 
 ### Courses
 
@@ -335,6 +397,10 @@ All course endpoints are prefixed with `/api/v1/courses`.
   - `gradeLevel`: Filter by grade level
   - `subject`: Filter by subject
   - `search`: Search in title and description
+- **Example request (Postman)**:
+  - URL: `http://localhost:4040/api/v1/courses?status=published&gradeLevel=9&subject=Math&search=algebra`
+  - Method: `GET`
+  - Headers: *(none required)*
 
 #### Get Course by ID
 - **GET** `/api/v1/courses/:id`
@@ -346,6 +412,9 @@ All course endpoints are prefixed with `/api/v1/courses`.
 - **Description**: Create a new course
 - **Auth**: Required (Teacher/Admin)
 - **Body**: (multipart/form-data)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER_OR_ADMIN}}`
+  - `Content-Type: multipart/form-data`
   ```json
   {
     "title": "Introduction to Mathematics",
@@ -388,6 +457,9 @@ All group endpoints are prefixed with `/api/v1/groups`.
   - `status`: Filter by status (open, closed)
   - `type`: Filter by type (online, offline, hybrid)
   - `courseId`: Filter by course ID
+- **Example request (Postman)**:
+  - URL: `http://localhost:4040/api/v1/groups?status=open&type=online&courseId={{COURSE_ID}}`
+  - Method: `GET`
 
 #### Get Group by ID
 - **GET** `/api/v1/groups/:id`
@@ -408,7 +480,6 @@ All group endpoints are prefixed with `/api/v1/groups`.
     "price": 50,
     "startingDate": "2024-01-15",
     "startingTime": "10:00",
-    "duration": 60,
     "schedule": [
       {
         "day": "mon",
@@ -437,6 +508,240 @@ All group endpoints are prefixed with `/api/v1/groups`.
 - **Description**: Delete a group
 - **Auth**: Required (Teacher/Admin)
 - **Params**: `id` - Group ID
+
+### Lessons
+
+All lesson endpoints are prefixed with `/api/v1/lessons` and require authentication.
+
+#### Create Lesson
+- **POST** `/api/v1/lessons`
+- **Description**: Create a new lesson inside a group, with optional video and documents.
+- **Auth**: Required (`teacher` or `admin`)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER_OR_ADMIN}}`
+  - `Content-Type: multipart/form-data`
+- **Body (multipart/form-data)**:
+  - Fields such as:
+    - `title`: `"Lesson 1"`
+    - `description`: `"Introduction"`
+    - `groupId`: `"{{GROUP_ID}}"`
+    - `order`: `1`
+  - Files:
+    - `video`: video file (optional)
+    - `document`: one or more document files (optional)
+
+#### Get Lessons by Group
+- **GET** `/api/v1/lessons/group/:groupId`
+- **Auth**: Required
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
+
+#### Update Lesson
+- **PATCH** `/api/v1/lessons/:id`
+- **Auth**: Required (`teacher` or `admin`)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER_OR_ADMIN}}`
+  - `Content-Type: multipart/form-data`
+
+#### Delete Lesson / Assets
+- **DELETE** `/api/v1/lessons/:id`
+- **DELETE** `/api/v1/lessons/:id/video`
+- **DELETE** `/api/v1/lessons/:id/document/:docId`
+- **Auth**: Required (`teacher` or `admin`)
+
+#### Reorder Lessons in Group
+- **PATCH** `/api/v1/lessons/reorder/:groupId`
+- **Description**: Reorder lessons for a group (see implementation for exact body schema).
+- **Auth**: Required (`teacher` or `admin`)
+
+### Reviews
+
+All review endpoints are prefixed with `/api/v1/reviews`.
+
+#### Add Review
+- **POST** `/api/v1/reviews`
+- **Auth**: Required (logged-in user)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
+  - `Content-Type: application/json`
+- **Body (example)**:
+  ```json
+  {
+    "courseId": "{{COURSE_ID}}",
+    "rating": 5,
+    "comment": "Great course!"
+  }
+  ```
+
+#### Update Review
+- **PATCH** `/api/v1/reviews`
+- **Auth**: Required
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
+  - `Content-Type: application/json`
+- **Body (example)**:
+  ```json
+  {
+    "reviewId": "{{REVIEW_ID}}",
+    "rating": 4,
+    "comment": "Updated comment"
+  }
+  ```
+
+#### Delete Review
+- **DELETE** `/api/v1/reviews/:reviewId`
+- **Auth**: Required (`admin`, `student`, or `parent`)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN}}`
+
+#### Get Reviews by Course
+- **GET** `/api/v1/reviews/:courseId`
+- **Description**: Get all reviews for a course (public)
+
+### Enrollments & Payments
+
+All enrollment endpoints are prefixed with `/api/v1/enrollments`.
+
+#### Subscribe (Enroll) Student in Group
+- **POST** `/api/v1/enrollments/groups/:groupId/enroll`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_PARENT}}`
+- **Body**:
+  ```json
+  {
+    "studentId": "66f1b8c2c4d1f4b25e9e1234",
+    "paymentMethodId": "pm_1Nc5bSDp9EXAMPLE"
+  }
+  ```
+- **Description**:
+  - Creates a Stripe monthly subscription for the given group and one of the parent's students.
+  - Returns an `enrollment` document plus a `clientSecret` to confirm the first payment on the frontend.
+
+#### List My Enrollments
+- **GET** `/api/v1/enrollments/me`
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_PARENT}}`
+- **Description**: List all enrollments (subscriptions) created by the authenticated parent.
+
+#### Example (Postman) – Successful parent enrollment
+- **Step 1**: Parent logs in and obtains `ACCESS_TOKEN` and `paymentMethodId` (from Stripe Elements on frontend).
+- **Step 2**: Create enrollment:
+  - Method: `POST`
+  - URL: `http://localhost:4040/api/v1/enrollments/groups/{{GROUP_ID}}/enroll`
+  - Headers:
+    - `Content-Type: application/json`
+    - `Authorization: Bearer {{ACCESS_TOKEN_OF_PARENT}}`
+  - Body (raw JSON):
+    ```json
+    {
+      "studentId": "{{STUDENT_USER_ID}}",
+      "paymentMethodId": "pm_1Nc5bSDp9EXAMPLE"
+    }
+    ```
+  - Response (example):
+    ```json
+    {
+      "success": true,
+      "message": "Enrollment initiated. Complete the payment to activate.",
+      "data": {
+        "enrollment": { "...": "..." },
+        "clientSecret": "pi_12345_secret_67890",
+        "stripeStatus": "incomplete"
+      }
+    }
+    ```
+
+#### Cancel Enrollment
+- **DELETE** `/api/v1/enrollments/:enrollmentId`
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_PARENT}}`
+- **Description**: Marks the underlying Stripe subscription to cancel at the end of the current billing period.
+
+#### Stripe Webhook
+- **POST** `/api/v1/enrollments/stripe/webhook`
+- **Headers**:
+  - `Content-Type: application/json` **(raw, no JSON parsing in Postman tests)**  
+  - `Stripe-Signature: {{STRIPE_SIGNATURE}}` (set automatically by Stripe in production)
+- **Description**:
+  - Receives Stripe events like `invoice.payment_succeeded`, `customer.subscription.updated`, etc.
+  - Updates `Enrollment` records, records charges, credits teacher earnings, and keeps the group’s students list in sync.
+
+### Teacher Payouts
+
+All payout endpoints are prefixed with `/api/v1/payouts`.
+
+#### Create Payout Request
+- **POST** `/api/v1/payouts/claim`
+- **Description**: Move part of the teacher's available balance into a payout request after deducting the platform fee (already handled on each invoice).
+- **Auth**: Required (Teacher)
+- **Headers**:
+-  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER}}`
+- **Body**:
+  ```json
+  {
+    "amount": 120.5,
+    "note": "October earnings"
+  }
+  ```
+
+#### List My Payout Requests
+- **GET** `/api/v1/payouts/me`
+- **Description**: View the teacher's payout history and statuses.
+- **Auth**: Required (Teacher)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER}}`
+
+#### Admin: List Payout Requests
+- **GET** `/api/v1/payouts?status=pending`
+- **Description**: Review payout queue, optionally filtered by status (`pending`, `approved`, `paid`, `rejected`).
+- **Auth**: Required (Admin)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_ADMIN}}`
+
+#### Admin: Update Payout Status
+- **PATCH** `/api/v1/payouts/:payoutId`
+- **Description**: Approve, pay, or reject a payout. Rejecting restores the amount to the teacher's available balance, paying stores the payout timestamp and optional banking references.
+- **Auth**: Required (Admin)
+- **Headers**:
+  - `Authorization: Bearer {{ACCESS_TOKEN_OF_ADMIN}}`
+- **Body**:
+  ```json
+  {
+    "status": "paid",
+    "adminNote": "Transferred via bank wire",
+    "referenceIds": ["payout_tx_123"]
+  }
+  ```
+
+#### Example (Postman) – Teacher payout flow
+- **Teacher creates payout request**:
+  - Method: `POST`
+  - URL: `http://localhost:4040/api/v1/payouts/claim`
+  - Headers:
+    - `Content-Type: application/json`
+    - `Authorization: Bearer {{ACCESS_TOKEN_OF_TEACHER}}`
+  - Body:
+    ```json
+    {
+      "amount": 100,
+      "note": "November earnings"
+    }
+    ```
+- **Admin approves & pays payout**:
+  - Method: `PATCH`
+  - URL: `http://localhost:4040/api/v1/payouts/{{PAYOUT_ID}}`
+  - Headers:
+    - `Content-Type: application/json`
+    - `Authorization: Bearer {{ACCESS_TOKEN_OF_ADMIN}}`
+  - Body:
+    ```json
+    {
+      "status": "paid",
+      "adminNote": "Paid via bank transfer",
+      "referenceIds": ["bank_tx_123456"]
+    }
+    ```
 
 ### Health Check
 
@@ -492,6 +797,8 @@ All group endpoints are prefixed with `/api/v1/groups`.
 - `type` (Enum: online, offline, hybrid, required)
 - `isFree` (Boolean, default: false)
 - `price` (Number, min: 0, required if not free)
+- `currency` (String, 3-letter uppercase, default: USD)
+- `billingInterval` (String, currently `month`)
 - `startingDate` (Date, required)
 - `startingTime` (String, required)
 - `duration` (Number, required) - in minutes
@@ -504,8 +811,35 @@ All group endpoints are prefixed with `/api/v1/groups`.
 - `courseId` (ObjectId, ref: Course, required)
 - `teacherId` (ObjectId, ref: User, required)
 - `students` (Array of ObjectIds, ref: User)
+- `stripeProductId` / `stripePriceId` / `stripePriceAmount` (Stripe billing metadata)
 - `timestamps` (createdAt, updatedAt)
 - `availableSeats` (Virtual: capacity - studentsCount)
+
+### Subscription Model
+- `parent` (ObjectId, ref: User)
+- `student` (ObjectId, ref: User)
+- `group` (ObjectId, ref: Group)
+- `course` (ObjectId, ref: Course)
+- `teacher` (ObjectId, ref: User)
+- `amount` (Number) — monthly list price
+- `currency` (String) — defaults to USD
+- `status` (Enum: incomplete, trialing, active, past_due, canceled, unpaid)
+- `stripeCustomerId` / `stripeSubscriptionId` / `stripePriceId`
+- `currentPeriodStart` / `currentPeriodEnd`
+- `cancelAtPeriodEnd`, `canceledAt`
+- `charges[]` — ledger of Stripe invoices (gross amount, teacher share, platform fee, paidAt)
+
+### Payout Model
+- `teacher` (ObjectId, ref: User)
+- `amount` (Number) — net value requested
+- `currency` (String, default USD)
+- `status` (Enum: pending, approved, paid, rejected)
+- `requestedBy` / `approvedBy` (ObjectId, refs: User)
+- `teacherNote`, `adminNote`
+- `paidAt` timestamp
+- `referenceIds[]` (external transaction identifiers)
+- `period` (start/end) for bookkeeping
+- `platformFeeSnapshot` (Number) for audit purposes
 
 ## Authentication & Authorization
 
@@ -537,8 +871,9 @@ Authorization: Bearer <access_token>
 - Provides optimized image URLs
 
 ### Stripe
-- Payment processing integration
-- Configured for course and group payments
+- Handles all recurring group subscriptions
+- Stripe Products/Prices are auto-provisioned per group
+- Webhook (`/api/v1/subscriptions/stripe/webhook`) records invoices, credits teacher balances, and tracks the 10% platform fee
 
 ### Nodemailer
 - Email service for:
@@ -567,7 +902,8 @@ src/
 │   ├── user.controller.js
 │   ├── course.controller.js
 │   ├── group.controller.js
-│   └── ...
+│   ├── subscription.controller.js
+│   └── payout.controller.js
 ├── middlewares/           # Custom middlewares
 │   ├── auth.middleware.js
 │   ├── error.middleware.js
@@ -577,19 +913,22 @@ src/
 │   ├── User.js
 │   ├── Course.js
 │   ├── Group.js
-│   └── ...
+│   ├── Subscription.js
+│   └── Payout.js
 ├── routes/                # API routes
 │   ├── auth.routes.js
 │   ├── user.routes.js
 │   ├── course.routes.js
 │   ├── group.routes.js
-│   └── ...
+│   ├── subscription.routes.js
+│   └── payout.routes.js
 ├── services/              # Business logic
 │   ├── auth.service.js
 │   ├── user.service.js
 │   ├── course.service.js
 │   ├── mail.service.js
-│   └── ...
+│   ├── subscription.service.js
+│   └── payout.service.js
 ├── utils/                 # Utility functions
 │   ├── app.error.js
 │   ├── constants.js

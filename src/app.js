@@ -13,6 +13,9 @@ import { lessonRouter } from "./routes/lesson.routes.js";
 import { reviewRouter } from "./routes/reviews.routes.js";
 import { userRouter } from "./routes/user.routes.js";
 import { teacherRouter } from "./routes/users/teacher.routes.js";
+import { enrollmentRouter } from "./routes/enrollment.routes.js";
+import { payoutRouter } from "./routes/payout.routes.js";
+import webhookController from "./controllers/webhook.controller.js";
 
 const app = express();
 
@@ -20,12 +23,22 @@ const app = express();
 connectDB();
 
 /* --- --- --- MIDDLEWARES --- --- --- */
-app.use(passport.initialize());
+// Stripe webhook must be before express.json() to receive raw body
+app.post('/api/v1/enrollments/webhook', 
+  express.raw({ type: 'application/json' }), 
+  webhookController.handleWebhook
+);
 
-app.use(cookieParser());
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+app.use(passport.initialize());
+app.use(cors({
+    origin: CLIENT_URL || 'http://localhost:3000', // or '*' for dev
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization'],
+    credentials: true, // if sending cookies
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 /* --- --- --- END POINTS --- --- --- */
 app.use("/api/v1/auth",authRouter);
@@ -35,6 +48,8 @@ app.use("/api/v1/courses", courseRouter);
 app.use("/api/v1/reviews", reviewRouter);
 app.use("/api/v1/groups", groupRouter);
 app.use("/api/v1/lessons", lessonRouter);
+app.use("/api/v1/enrollments", enrollmentRouter);
+app.use("/api/v1/payouts", payoutRouter);
 
 
 

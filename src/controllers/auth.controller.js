@@ -69,11 +69,9 @@ class AuthController {
      * @access Public
      */
     logout = asyncHandler(async (req, res) => {
-        const token = req.cookies?.refreshToken;
 
-        if (token) {
-             this.authService.clearRefreshCookie(res);
-        }
+        if (req.cookies?.accessToken) this.authService.clearAccessCookie(res);
+        if (req.cookies?.refreshToken) this.authService.clearRefreshCookie(res);
 
         res.status(200).json({
             success: true,
@@ -173,7 +171,7 @@ class AuthController {
      */
     googleCallback = asyncHandler(async (req, res) => {
         const oauthData = req.user;
-        const fallbackURL = req.query.fallbackUrl || `${CLIENT_URL}/auth/login?error=oauth_failed`;
+        const fallbackURL = req.query.fallbackUrl || `${CLIENT_URL}/auth/login?error=oauth_failed&success=false`;
         
         if (!oauthData || !oauthData.provider || !oauthData.providerId || !oauthData.email) {
             return res.redirect(fallbackURL);
@@ -183,7 +181,9 @@ class AuthController {
         this.authService.setRefreshCookie(res, refreshToken);
 
         // Redirect to frontend with token (or use a different approach)
-        const redirectUrl = `${CLIENT_URL || 'http://localhost:3000'}/auth/callback?token=${accessToken}`;
+        const redirectUrl = `${CLIENT_URL || 'http://localhost:3000'}/auth/login?success=true`;
+        this.authService.setAccessCookie(res, accessToken);
+        this.authService.setRefreshCookie(res, refreshToken);
         res.redirect(redirectUrl);
     });
 

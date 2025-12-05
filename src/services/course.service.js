@@ -21,8 +21,7 @@ class CourseService extends BaseService {
             const uploadResult = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/", { resource_type: "image" });
 
             thumbnail = {
-                url: uploadResult.url,
-                publicId: uploadResult.publicId
+                ...uploadResult
             };
         }
         const newCourse = await super.create({ ...data, thumbnail });
@@ -77,8 +76,8 @@ class CourseService extends BaseService {
     async getCourseById(_id) {
         const course = await this.model
             .findById(_id)
-            .populate('teacherId', 'name username')
-            .populate('groups', 'title startingDate capacity studentsCount status');
+            .populate('teacherId')
+            .populate('groups');
 
         if (!course) {
             throw AppError.notFound("Course not found");

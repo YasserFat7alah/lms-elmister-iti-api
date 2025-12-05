@@ -8,35 +8,29 @@ const GroupSchema = new mongoose.Schema({
         maxlength: 150,
         minlength: 5,
     },
+
     description: {
         type: String,
         trim: true,
         maxlength: 500,
     },
+
     type: {
         type: String,
         enum: ["online", "offline", "hybrid"],
+        default: "online",
         required: true,
-    },
-    isFree: {
-        type: Boolean,
-        default: false,
-    },
-    price: {
-        type: Number,
-        min: 0,
-        required: function () {
-            return !this.isFree;
-        },
     },
 
     startingDate: {
         type: Date,
         required: true,
     },
+
     startingTime: {
         type: String,
     },
+
     schedule: [{
         day: {
             type: String,
@@ -49,11 +43,13 @@ const GroupSchema = new mongoose.Schema({
             required: true,
         }
     }],
+
     capacity: {
         type: Number,
         required: true,
         min: 1,
     },
+
     minStudents: {
         type: Number,
         default: 1,
@@ -71,31 +67,33 @@ const GroupSchema = new mongoose.Schema({
             message: 'Students count cannot exceed capacity'
         }
     },
+
     status: {
         type: String,
         enum: ["open", "closed"],
         default: "open",
     },
-
+    
     location: {
         type: String,
         required: function () {
             return this.type !== "online";
         }
     },
+    
     link: {
         type: String,
         required: function () {
-            return this.type === "online";
+            return this.type !== "offline";
         }
     },
-
+    
     courseId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Course",
         required: true,
     },
-
+    
     teacherId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -106,12 +104,56 @@ const GroupSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
     }],
+
     lessons: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Lesson"
         }
-    ]
+    ],
+
+/* --- --- --- FINANCIAL DETAILS --- --- --- */
+    isFree: {
+        type: Boolean,
+        default: false,
+    },
+
+    price: {
+        type: Number,
+        default: 0,
+        min: 0,
+        required: function () {
+            return !this.isFree;
+        },
+    },
+
+    currency: {
+        type: String,
+        default: "usd",
+        lowerCase: true,
+        minlength: 3,
+        maxlength: 3,
+    },
+
+    stripe: {
+        productId:{
+            type: String,
+        },
+
+        priceId: {
+            type: String,
+        },
+
+        price: {
+            type: Number,
+        },
+
+        billingInterval: {
+        type: String,
+        enum: ["month"],
+        default: "month",
+        },
+    }
 
 }, { timestamps: true });
 
@@ -124,7 +166,7 @@ GroupSchema.virtual('availableSeats').get(function () {
 GroupSchema.pre("save", function () {
     // sync studentsCount
     this.studentsCount = this.students.length;
-
+    
     //sync status with capacity
     if (this.studentsCount >= this.capacity) {
         this.status = "closed";

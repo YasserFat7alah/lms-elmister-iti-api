@@ -15,8 +15,7 @@ const errorHandler = (err, req, res, next) => {
 
     // Duplicate key error
     if (err.code === 11000) {
-
-        const value = err.errmsg ? err.errmsg.match(/(["'])(\\?.)*?\1/)[0] : 'entered value';
+        const value = err.errmsg;
         const message = `Duplicate field value: ${value}. Please use another value!`;
         error = AppError.conflict(message);
     }
