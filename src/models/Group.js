@@ -54,7 +54,7 @@ const GroupSchema = new mongoose.Schema({
         required: true,
         min: 1,
     },
-    minStudents:{
+    minStudents: {
         type: Number,
         default: 1,
         min: 1
@@ -106,6 +106,12 @@ const GroupSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
     }],
+    lessons: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Lesson"
+        }
+    ]
 
 }, { timestamps: true });
 

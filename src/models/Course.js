@@ -26,7 +26,7 @@ const CourseSchema = new mongoose.Schema(
     thumbnail: {
       url: { type: String },
       publicId: { type: String },
-      type: { type: String }
+      type: { type: String, default: "image" },
     },
 
     subject: {

@@ -84,6 +84,7 @@ export const updateGroupSchema = Joi.object({
         }),
     })),
 
+    minStudents: Joi.number().min(1).default(1),
     capacity: Joi.number().min(1),
     studentsCount: Joi.number().min(0),
     status: Joi.string().valid('open', 'closed'),
