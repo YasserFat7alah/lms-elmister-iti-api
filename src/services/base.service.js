@@ -134,13 +134,12 @@ class BaseService {
      * @returns {object} The sanitized document
      */
     sanitize(doc) {
-        if (!doc) return null;
+        if (!doc) return;
 
         const obj = doc.toObject ? doc.toObject({ virtuals: true }) : {...doc};
-        const { password, __v, childrenId, ...rest } = obj;
+        const { password, __v, ...rest } = obj;
         
         let safe = { ...rest };
-        if (rest.role === 'parent') safe.childrenId = childrenId;
 
         return {
             ...safe

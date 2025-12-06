@@ -49,9 +49,13 @@ class UserController {
   });
 
   getAll = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10 } = req.query;
-    const { name, email, role } = req.query;
-    const users = await this.userService.findAll({ name, email, role }, '', '', { page, limit });
+    const { role, subject, name, gradeLevel } = req.query;
+    const { page, limit } = req.query;
+
+    // const userId = req.user.id;
+    // const userRole = req.user.role;
+
+    const users = await this.userService.findAll({ role, subject, name, gradeLevel } , { page, limit });
     res.status(200).json({
       success: true,
       data: { users },

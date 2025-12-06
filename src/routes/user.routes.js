@@ -14,5 +14,8 @@ router.get('/me', authenticate, getMe);
 router.patch('/me', authenticate, upload.single('avatar'), updateMe);
 router.post('/me/avatar', authenticate, upload.single('avatar'), uploadAvatar);
 
+router.get('/', userController.getAll);
+
+
 
 export { router as userRouter };
