@@ -266,7 +266,6 @@ class EnrollmentService {
     teacherProfile.balance += amount;
     await teacherProfile.save();
   }
-
   
 }
 

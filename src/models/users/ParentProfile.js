@@ -13,22 +13,22 @@ const ParentProfileSchema = new mongoose.Schema({
     trim: true,
   },
 
+  children: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+
   /* --- --- --- STRIPE --- --- --- */
-  stripe: {
     customerId: {
       type: String,
     },
 
-    defaultPaymentMethodId: {
-      type: String,
-    },
+});
 
-    payment: [
-      {
-        type: String,
-      },
-    ],
-  },
+ParentProfileSchema.virtual("childrenCount").get(function () {
+  return this.children.length;
 });
 
 export default mongoose.model("ParentProfile", ParentProfileSchema);

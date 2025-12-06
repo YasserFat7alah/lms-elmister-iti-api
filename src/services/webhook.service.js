@@ -15,11 +15,6 @@ class WebhookService {
 
     /* --- --- --- EVENT INITIALIZATION --- --- --- */
 
-    /** Constructs an event from a raw body and signature.
-     * @param {string} signature : The Stripe signature
-     * @param {string} rawBody : The raw body
-     * @returns {object} : The Stripe event object
-     * */
     constructEvent(signature, rawBody) {
         if (!STRIPE_WEBHOOK_SECRET)
             throw AppError.internal(
@@ -35,413 +30,250 @@ class WebhookService {
 
     /* --- --- --- EVENT HANDLING --- --- --- */
 
-    /** handles an event from the webhook
-     * @param {object} event : The event object
-     * */
     async handleEvent(event) {
-        switch (event.type) {
-
-            case 'charge.succeeded':
-                console.log(event.data);
-                
-                break;
-
-            // Handle checkout session completed
-            case "checkout.session.completed":
-                await this.handleCheckoutCompleted(event.data.object);
-                break;
-
-            // Handle checkout session expired (user clicked back/cancel)
-            case "checkout.session.expired":
-            case "checkout.session.async_payment_failed":
-                await this.handleCheckoutCancelled(event.data.object);
-                break;
-
-            // Handle subscription updates
-            // case "customer.subscription.updated":
-            //     console.log('customer updated');
-            //     await this.syncSubscription(event.data.object);
-                
-            //     break;
-            // case "customer.subscription.created":
-            //     console.log('customer created');
-            //     await this.syncSubscription(event.data.object);
-            //     break;
-
-            // Handle subscription cancellation
-            case "customer.subscription.deleted":
-                await this.markSubscriptionCancelled(event.data.object);
-                break;
+        try {
+            console.log(`🔔 Event received: ${event.type}`); // LOG
             
-            // Handle payment completed
-            case "invoice.payment_succeeded":
-                await this.handleInvoicePaid(event.data.object);
-                break;
+            switch (event.type) {
+                case "checkout.session.completed":
+                    await this.handleCheckoutCompleted(event.data.object);
+                    break;
 
-            // Handle recurring invoice payments
-            // case "invoice_payment.paid":
-            //     await this.handleInvoicePaid(event.data.object);
-            //     break;
+                case "invoice.payment_succeeded":
+                    await this.handleInvoicePaid(event.data.object);
+                    break;
 
-            // Unhandled event
-            default:
-                console.log(`Unhandled event type: ${event.type}`);
-                break;
+                case "customer.subscription.deleted":
+                case "customer.subscription.updated":
+                    await this.handleSubscriptionUpdate(event.data.object);
+                    break;
+
+                case "checkout.session.expired":
+                case "checkout.session.async_payment_failed":
+                    await this.handleCheckoutCancelled(event.data.object);
+                    break;
+
+                default:
+                    console.log(`Unhandled event type: ${event.type}`);
+                    break;
+            }
+        } catch (error) {
+            console.error(`❌ Error handling event ${event.type}:`, error.message);
+            console.error(error.stack); // LOG STACK TRACE
         }
     }
 
-    /* --- --- --- EVENT HANDLERS --- --- --- */
+    /* --- --- --- CORE LOGIC HANDLERS --- --- --- */
 
-    async syncSubscription(subscription) {
-        console.log(
-            "-------------------------subscription updated----------------------------\n",
-            subscription
-        );
-
-        const enrollment = await Enrollment.findOne({ subscriptionId: subscription.id });
-            if (!enrollment) return console.error("Enrollment not found for subscription:", subscription.id);
-
-            enrollment.currentPeriodStart = this.updateDate(subscription.current_period_start, enrollment.currentPeriodStart);
-            enrollment.currentPeriodEnd = this.updateDate(subscription.current_period_end, enrollment.currentPeriodEnd);
-            enrollment.cancelAtPeriodEnd = subscription.cancel_at_period_end;
-            enrollment.canceledAt = this.updateDate(subscription.canceled_at, enrollment.canceledAt);
-
-            await enrollment.save();
-
-        if (subscription.status === "canceled") {
-            enrollment.canceledAt = new Date();
-            enrollment.cancelAtPeriodEnd = true;
-        }
-
-        if (subscription.status === "incomplete_expired") {
-            enrollment.canceledAt = new Date();
-            enrollment.cancelAtPeriodEnd = true;
-        }
-
-        await enrollment.save();
-
-        console.log(enrollment);
-    }
-
+    /**
+     * HANDLER 1: checkout.session.completed
+     */
     async handleCheckoutCompleted(session) {
-        console.log(
-            "-------------------------checkout session completed-----------------------------"
-        );
+        // console.log("------------------------- CHECKOUT COMPLETED -----------------------------");
 
-        console.log(session.metadata);
-        console.log('--------------------------------------------');
-        console.log(session.subscription);
-        console.log('--------------------------------------------');
-        // Only handle subscription checkout sessions
-        // if (session.mode !== 'subscription') return;
-
-        
-
-        const { enrollmentId, parentId, studentId } = session.metadata || {};
-        if (!enrollmentId || !parentId || !studentId) {
-            console.error("Missing enrollmentId or parentId or studentId in checkout session metadata");
-            return;
-        }
-
-        // Find enrollment by subscriptionId (which was set to session.id initially)
-        let enrollment = await Enrollment.findOne({ 
-            $or: [ { subscriptionId: session.id }, { _id: enrollmentId } ]
+        // 1. Retrieve Subscription
+        const subscription = await this.model.subscriptions.retrieve(session.subscription, {
+            expand: ['latest_invoice']
         });
 
+        if (!subscription || !subscription.latest_invoice) {
+            console.error("Missing subscription or invoice in checkout session");
+            return;
+        }
+
+        const invoice = subscription.latest_invoice;
+
+        // 2. Validate Metadata
+        const { enrollmentId, parentId, studentId, groupId } = session.metadata || {};
+        if (!enrollmentId) {
+            console.error("Missing enrollmentId in metadata");
+            return;
+        }
+
+        // 3. Find Enrollment
+        let enrollment = await Enrollment.findById(enrollmentId);
         if (!enrollment) {
-            console.error("Enrollment not found for checkout session:", session.id);
+            console.error(`Enrollment not found: ${enrollmentId}`);
             return;
         }
 
-        // If already processed, skip
-        if (enrollment.status === "active" && enrollment.subscriptionId !== session.id) {
-            return;
-        }
+        if (enrollment.status === "active" && enrollment.subscriptionId === subscription.id) return;
 
-        // Update enrollment with subscription ID from checkout session
-        enrollment.subscriptionId = session.subscription;
-        enrollment.status = "active";
-        enrollment.transactionId = session.payment_intent;
+        /* --- A. UPDATE ENROLLMENT (LINKING & DATES) --- */
+        enrollment.subscriptionId = subscription.id;
+        enrollment.status = subscription.status;
         enrollment.paidAt = new Date();
+        
+        // --- DATE LOGIC WITH FALLBACK (30 DAYS) ---
+        const stripeStart = this.updateDate(subscription.current_period_start);
+        const stripeEnd = this.updateDate(subscription.current_period_end);
 
-        // Get subscription details to set period dates
-        if (session.subscription) {
-            try {
-                const subscription = await this.model.subscriptions.retrieve(session.subscription);
-                enrollment.currentPeriodStart = this.updateDate(
-                    subscription.current_period_start, 
-                    enrollment.currentPeriodStart
-                );
-                enrollment.currentPeriodEnd = this.updateDate(
-                    subscription.current_period_end, 
-                    enrollment.currentPeriodEnd
-                );
-            } catch (error) {
-                console.error("Error retrieving subscription:", error);
-            }
+        enrollment.currentPeriodStart = stripeStart || new Date(); // Fallback to now
+        
+        // If Stripe returns null OR if we want to force 30 days logic:
+        if (stripeEnd) {
+            enrollment.currentPeriodEnd = stripeEnd;
+        } else {
+            const thirtyDaysFromNow = new Date(enrollment.currentPeriodStart);
+            thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+            enrollment.currentPeriodEnd = thirtyDaysFromNow;
         }
-
-        console.log(enrollment);
-        console.log('--------------------------------------------');
-
+        
+        enrollment.cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
+        enrollment.cancelAt = this.updateDate(subscription.cancel_at);
+        enrollment.canceledAt = this.updateDate(subscription.canceled_at);
         await enrollment.save();
 
-        // Add remaining amount to parent cash
-        const parentProfile = await ParentProfile.findOne({ user: parentId });
-        if (parentProfile) {
-            
-            // Save payment method from the checkout session
+        /* --- B. UPDATE PARENT --- */
+        if (parentId) {
             try {
-                const customerId = session.customer || enrollment.customerId;
-                if (customerId) {
-                    // Get payment method from payment intent if available
-                    let paymentMethodId = null;
-                    if (session.payment_intent) {
-                        try {
-                            const paymentIntent = await this.model.paymentIntents.retrieve(session.payment_intent);
-                            paymentMethodId = paymentIntent.payment_method;
-                        } catch (error) {
-                            console.error("Error retrieving payment intent:", error);
-                        }
-                    }
-
-                    // If no payment method from payment intent, get from subscription
-                    if (!paymentMethodId && session.subscription) {
-                        try {
-                            const subscription = await this.model.subscriptions.retrieve(session.subscription);
-                            paymentMethodId = subscription.default_payment_method || subscription.default_source;
-                        } catch (error) {
-                            console.error("Error retrieving subscription:", error);
-                        }
-                    }
-
-                    // If still no payment method, list customer's payment methods
-                    if (!paymentMethodId) {
-                        try {
-                            const paymentMethods = await this.model.paymentMethods.list({
-                                customer: customerId,
-                                type: 'card',
-                            });
-
-                            if (paymentMethods.data && paymentMethods.data.length > 0) {
-                                paymentMethodId = paymentMethods.data[0].id;
-                            }
-                        } catch (error) {
-                            console.error("Error listing payment methods:", error);
-                        }
-                    }
-
-                    // Save payment method to parent profile
-                    if (paymentMethodId) {
-                        parentProfile.stripe = parentProfile.stripe || {};
-                        parentProfile.stripe.payment = parentProfile.stripe.payment || [];
-                        
-                        // Add payment method if not already saved
-                        if (!parentProfile.stripe.payment.includes(paymentMethodId)) {
-                            parentProfile.stripe.payment.push(paymentMethodId);
-                        }
-
-                        // Set as default if not already set
-                        if (!parentProfile.stripe.defaultPaymentMethodId) {
-                            parentProfile.stripe.defaultPaymentMethodId = paymentMethodId;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Error saving payment method:", error);
-            }
-
-            await parentProfile.save();
+                const customerId = subscription.customer || enrollment.customerId;
+                await ParentProfile.findOneAndUpdate(
+                    { user: parentId },
+                    { customerId: customerId }
+                );
+            } catch (error) { console.error("Error linking parent:", error.message); }
         }
 
-        // Ensure student is in group
-        if (enrollment.group && enrollment.student) {
-            await enrollmentService.ensureStudentInGroup(enrollment.group, enrollment.student);
-        }
+        /* --- C. ENSURE GROUP --- */
+        await enrollmentService.ensureStudentInGroup(enrollment.group || groupId, enrollment.student || studentId);
 
-        console.log("Checkout session completed successfully:", session.id);
+        /* --- D. PROCESS FINANCIALS --- */
+        if (invoice.status === 'paid') await this.processFinancials(invoice, enrollment, subscription);
     }
 
+    /**
+     * HANDLER 2: invoice.payment_succeeded
+     */
+    async handleInvoicePaid(invoice) {
+        // Skip first invoice
+        if (invoice.billing_reason === 'subscription_create') {
+            return;
+        }
+
+        const subscriptionId = invoice.subscription;
+        if (!subscriptionId) return;
+
+        const enrollment = await Enrollment.findOne({ subscriptionId });
+        if (!enrollment || !subscriptionId) return; // Skip
+
+        // --- RENEWAL DATE LOGIC ---
+        // Try to get period from invoice lines first
+        const linePeriodEnd = invoice.lines?.data?.[0]?.period?.end;
+
+        const nextMonth = new Date();
+        nextMonth.setDate(nextMonth.getDate() + 30);
+        
+        enrollment.currentPeriodEnd = this.updateDate(linePeriodEnd,nextMonth);
+        enrollment.status = 'active';
+        await enrollment.save();
+        // console.log(`Enrollment Extended to: ${enrollment.currentPeriodEnd}`);
+
+        // Pass subscription as object with ID for consistency
+        const subscription = { id: subscriptionId, currency: invoice.currency }; 
+        await this.processFinancials(invoice, enrollment, subscription);
+    }
+
+    /**
+     * HANDLER 3: Subscription Updates
+     */
+    async handleSubscriptionUpdate(subscription) {
+        
+        const enrollment = await Enrollment.findOne({ subscriptionId: subscription.id });
+        if (!enrollment) return;
+
+        enrollment.status = subscription.status;
+        enrollment.cancelAtPeriodEnd = subscription.cancel_at_period_end;
+        enrollment.cancelAt = this.updateDate(subscription.cancel_at);
+        enrollment.canceledAt = this.updateDate(subscription.canceled_at);
+
+        await enrollment.save();
+    }
+
+    /**
+     * HANDLER 4: Checkout Cancelled
+     */
     async handleCheckoutCancelled(session) {
-        console.log(
-            "-------------------------checkout session cancelled/expired-----------------------------"
-        );
-
-        // Only handle subscription checkout sessions
         if (session.mode !== 'subscription') return;
-
+        
         const { enrollmentId } = session.metadata || {};
-        if (!enrollmentId) {
-            console.error("Missing enrollmentId in checkout session metadata");
-            return;
-        }
+        if (!enrollmentId) return;
 
-        // Find enrollment
-        const enrollment = await Enrollment.findOne({ 
-            $or: [
-                { subscriptionId: session.id },
-                { _id: enrollmentId }
-            ]
-        });
-
-        if (!enrollment) {
-            console.error("Enrollment not found for checkout session:", session.id);
-            return;
-        }
-
-        // Mark enrollment as incomplete_expired if it's still incomplete
-        if (enrollment.status === "incomplete") {
+        const enrollment = await Enrollment.findById(enrollmentId);
+        if (enrollment && enrollment.status === "incomplete") {
             enrollment.status = "incomplete_expired";
             enrollment.canceledAt = new Date();
             await enrollment.save();
+            console.log("✅ Enrollment marked expired.");
         }
-
-        // Expire the session in Stripe (if not already expired)
-        try {
-            await this.model.checkout.sessions.expire(session.id);
-            console.log("Checkout session expired:", session.id);
-        } catch (error) {
-            // Session might already be expired, ignore error
-            console.log("Session already expired or error expiring:", error.message);
-        }
-
-        console.log("Checkout session cancelled/expired:", session.id);
     }
 
-    async handleInvoicePaid(invoice) {
-        console.log(
-            "-------------------------invoice paid-------------------------"
-        );
-        console.log(invoice.parent.subscription_details.subscription);
-        console.log('--------------------------------------------');
-        
-        const subscriptionId = invoice.parent.subscription_details.subscription;
-        // Validate invoice has required data
-        if (!subscriptionId || !invoice.amount_paid) {
-            console.log("Invoice missing subscription or amount_paid");
-            return;
-        }
+    /* --- --- --- FINANCIAL LOGIC --- --- --- */
 
-        // Check if invoice is fully paid
-        const isFullyPaid = invoice.status === 'paid' && 
-                           invoice.amount_paid >= invoice.amount_due;
-
-        if (!isFullyPaid) {
-            console.log("Invoice not fully paid yet:", invoice.id);
-            return;
-        }
-
-        // Find enrollment by subscription ID
-        const enrollment = await Enrollment.findOne({
-            subscriptionId,
-        });
-
-        if (!enrollment) {
-            console.error("Enrollment not found for subscription:", subscriptionId);
-            return;
-        }
-
-        // Check if this invoice was already processed
-        const alreadyLogged = enrollment.charges.some( (charge) => charge.invoiceId === invoice.id );
-        if (alreadyLogged) {
-            console.log("Invoice already processed:", invoice.id);
-            return;
-        }
-
-        // Calculate amounts
-        const amountPaid = invoice.amount_paid / 100 || 0; // Convert from cents
-        const amountDue = invoice.amount_due ? invoice.amount_due / 100 : amountPaid;
-        const platformFeeRate = 0.1; // 10% platform fee
-        const platformFee = Number((amountPaid * platformFeeRate).toFixed(2));
-        const teacherShare = Number((amountPaid - platformFee).toFixed(2));
-
-        // Get invoice period
-        const invoicePeriod = invoice.lines?.data?.[0]?.period;
-
-        // Update enrollment charges
-        enrollment.charges.push({
-            invoiceId: invoice.id,
-            amount: amountPaid,
-            currency: invoice.currency || enrollment.currency,
-            teacherShare,
-            platformFee,
-            paidAt: this.updateDate(invoice.status_transitions?.paid_at, new Date()),
-        });
-
-        // Update enrollment status and period
-        enrollment.status = "active";
-        enrollment.currentPeriodStart = this.updateDate(
-            invoicePeriod?.start, 
-            enrollment.currentPeriodStart || new Date()
-        );
-        enrollment.currentPeriodEnd = this.updateDate(
-            invoicePeriod?.end, 
-            enrollment.currentPeriodEnd
-        );
-
-        await enrollment.save();
-
-        // Log invoice in Invoice model
+    /** process financials
+     * @param invoice :
+     * @param enrollment :
+     * @param subscription : 
+     * @param fee : platform fee -fraction ( default: 0.1 )
+    async processFinancials(invoice, enrollment, subscription, fee=0.1) {
         try {
-            const invoiceRecord = await Invoice.findOneAndUpdate(
-                { stripeInvoiceId: invoice.id },
-                {
-                    stripeInvoiceId: invoice.id,
-                    stripeSubscriptionId: invoice.subscription,
-                    enrollment: enrollment._id,
-                    teacher: enrollment.teacher,
-                    parent: enrollment.parent,
-                    student: enrollment.student,
-                    amount: amountDue,
-                    amountPaid: amountPaid,
-                    amountDue: amountDue,
-                    currency: invoice.currency || enrollment.currency,
-                    platformFee: platformFee,
-                    teacherShare: teacherShare,
-                    status: "paid",
-                    paidAt: this.updateDate(invoice.status_transitions?.paid_at, new Date()),
-                    periodStart: this.updateDate(invoicePeriod?.start, null),
-                    periodEnd: this.updateDate(invoicePeriod?.end, null),
-                },
-                { upsert: true, new: true }
-            );
+            const amountPaid = invoice.amount_paid / 100 || 0;
+            const amountDue = invoice.amount_due / 100 || 0;
+            const platformFee = Number((amountPaid * fee).toFixed(2));
+            const teacherShare = Number((amountPaid - platformFee).toFixed(2));
 
-            console.log("Invoice logged:", invoiceRecord._id);
+            // Credit Teacher
+            if (enrollment.teacher && teacherShare > 0) {
+                try {
+                    await enrollmentService.creditTeacher(enrollment.teacher, teacherShare);
+                } catch (err) { 
+                    // console.error("Error crediting teacher:", err.message);
+                }
+            }
+
+            // --- INVOICE DATES FIX ---
+            // Fix: If invoice start == end, calculate correct end date manually
+            let dbPeriodStart = this.updateDate(invoice.period_start);
+            let dbPeriodEnd = this.updateDate(invoice.period_end);
+
+            if (dbPeriodStart && dbPeriodEnd && dbPeriodStart.getTime() === dbPeriodEnd.getTime()) {
+                // console.log("⚠️ Invoice period start equals end. Adjusting DB invoice end date (+30 days).");
+                // Clone date to avoid reference issues
+                const adjustedEnd = new Date(dbPeriodStart.getTime());
+                adjustedEnd.setDate(adjustedEnd.getDate() + 30);
+                dbPeriodEnd = adjustedEnd;
+            }
+            
+            // If we have subscription data (from checkout handler), prefer it
+            if (subscription.current_period_end) {
+                 dbPeriodEnd = this.updateDate(subscription.current_period_end);
+            }
+
+            // Log Invoice
+            const invoiceRecord = await Invoice.create({
+                stripeInvoiceId: invoice.id,
+                stripeSubscriptionId: subscription.id,
+                enrollment: enrollment._id,
+                amount: amountDue,
+                amountPaid: amountPaid,
+                amountDue: amountDue,
+                currency: invoice.currency,
+                platformFee: platformFee,
+                teacherShare: teacherShare,
+                status: invoice.status,
+                paidAt: this.updateDate(invoice.status_transitions?.paid_at, new Date()),
+                periodStart: dbPeriodStart,
+                periodEnd: dbPeriodEnd, // Using the fixed date
+            });
+
+            // console.log(`✅ Invoice logged: ${invoiceRecord._id}`);
         } catch (error) {
-            console.error("Error logging invoice:", error);
+            console.error("❌ Error in processFinancials:", error.message);
         }
-
-        // Add money to teacher balance (after 10% platform fee)
-        try {
-            await enrollmentService.creditTeacher(enrollment.teacher, teacherShare);
-        } catch (error) {
-            console.error("Error updating teacher balance:", error);
-        }
-
-        // Ensure student is in group
-        if (enrollment.group && enrollment.student) {
-            await enrollmentService.ensureStudentInGroup(enrollment.group, enrollment.student);
-        }
-
-        console.log("Invoice paid and processed successfully:", invoice.id);
     }
 
-    
+    /* --- --- --- UTILITIES --- --- --- */
 
-    async markSubscriptionCancelled(subscription) {
-        console.log(
-            "-------------------------subscription cancelled----------------------------"
-        );
-        console.log("Subscription cancelled:", subscription);
-    }
-
-    /* --- --- --- HELPERS --- --- --- */
-
-    /** Format Stripe Date
-     * @param {number} date - Unix timestamp
-     * @param {Date} fallback - Fallback date
-     * @returns {Date} Date object
-     * */
     updateDate(date, fallback = null) {
         return date ? new Date(date * 1000) : fallback;
     }
