@@ -8,7 +8,7 @@ class EnrollmentController {
   }
 
   /** Parent enrolls one of their students into a group (Stripe subscription) */
-  createCheckoutSession = asyncHandler(async (req, res) => {
+  enroll = asyncHandler(async (req, res) => {
     const user = req.user;
     if (user.role !== "parent") {
       throw AppError.forbidden("Only parents can enroll students into groups");

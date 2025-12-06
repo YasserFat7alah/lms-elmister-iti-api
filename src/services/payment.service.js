@@ -85,11 +85,15 @@ class PaymentService {
    */
   async getCustomerId(user, profile) {
 
-    const userId = user.id || user._id;
+    const userId = user._id || user.id;
 
-    if(!userId || userId !== profile.user._id) return null;
+    if(!userId || userId.toString() !== profile.user._id.toString()) return null;
 
-    if (profile.stripe?.customerId) return profile.stripe.customerId;
+    if (profile.stripe?.customerId) {
+      console.log(profile.stripe?.customerId);
+      
+      return profile.stripe.customerId
+    };
 
     const customer = await stripe.customers.create({
       email: user.email,
@@ -99,8 +103,82 @@ class PaymentService {
       },
     });
 
+    profile.stripe = profile.stripe || {};
+    profile.stripe.customerId = customer.id;
+    console.log(profile.stripe?.customerId);
+    await profile.save();
+
     return customer.id;
   }
+  
+    /** Use Payment Method
+     * @param {string} customerId - Stripe Customer Id
+     * @param {string} paymentMethodId - Stripe Payment Method Id
+     * @param {object} profile - parent profile
+     * @returns {string} Stripe Payment Method Id
+     * */
+    async usePaymentMethod(customerId, paymentMethodId, profile) {
+      if (!paymentMethodId && profile.stripe?.defaultPaymentMethodId) {
+        return profile.stripe.defaultPaymentMethodId;
+      }
+  
+      if (!paymentMethodId) {
+        throw AppError.badRequest("paymentMethodId is required!");
+      }
+  
+      await stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
+  
+      await stripe.customers.update(customerId, {
+        invoice_settings: { default_payment_method: paymentMethodId },
+      });
+  
+      profile.stripe = profile.stripe || {};
+      profile.stripe.defaultPaymentMethodId = paymentMethodId;
+      await profile.save();
+  
+      return paymentMethodId;
+    }
+  
+    /** get price id from stripe
+     * @param {object} group
+     * @returns {string} Stripe Price Id
+     * */
+    async getPriceId(group) {
+      if (!group.stripe) group.stripe = {};
+      
+  
+      if (group.stripe.priceId && group.stripe.price === group.price) {
+        return group.stripe.priceId;
+      }
+  
+      if (!group.stripe.productId) {
+        const product = await stripe.products.create({
+          name: `${group.title} (${group._id.toString()})`,
+          metadata: {
+            groupId: group._id.toString(),
+            courseId: group.courseId?._id.toString() || "",
+          },
+        });
+        group.stripe.productId = product.id;
+      }
+  
+      const price = await stripe.prices.create({
+        product: group.stripe.productId,
+        unit_amount: Math.round(group.price * 100),
+        currency: group.currency || "usd",
+        recurring: {
+          interval: group.stripe.billingInterval || "month",
+        },
+      });
+  
+      group.stripe.priceId = price.id;
+      group.stripe.price = group.price;
+      await group.save();
+  
+      return price.id;
+    }
 
   /* --- --- --- WEBHOOKS --- --- --- */
 }

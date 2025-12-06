@@ -15,20 +15,17 @@ import { userRouter } from "./routes/user.routes.js";
 import { teacherRouter } from "./routes/users/teacher.routes.js";
 import { enrollmentRouter } from "./routes/enrollment.routes.js";
 import { payoutRouter } from "./routes/payout.routes.js";
-import webhookController from "./controllers/webhook.controller.js";
+import { webhookRouter } from "./routes/webhook.routes.js";
 
 const app = express();
 
 /* --- --- --- DB Connection --- --- --- */
 connectDB();
 
-/* --- --- --- MIDDLEWARES --- --- --- */
-// Stripe webhook must be before express.json() to receive raw body
-app.post('/api/v1/enrollments/webhook', 
-  express.raw({ type: 'application/json' }), 
-  webhookController.handleWebhook
-);
+/* --- --- --- WEBHOOKS --- --- --- */
+app.use('/api/v1/webhooks', webhookRouter);
 
+/* --- --- --- MIDDLEWARES --- --- --- */
 app.use(passport.initialize());
 app.use(cors({
     origin: CLIENT_URL || 'http://localhost:3000', // or '*' for dev

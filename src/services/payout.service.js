@@ -29,14 +29,19 @@ class PayoutService {
     }
 
     // Check if teacher has enough pending payouts
-    const availableBalance = teacherProfile.pendingPayouts || 0;
+    const pendingPayouts = teacherProfile.pendingPayouts || 0;
+    if (pendingPayouts >= 3) {
+      throw AppError.badRequest( "You have reached the maximum number of pending payouts" );
+    }
+    const availableBalance = teacherProfile.balance || 0;
     if (availableBalance < amount) {
       throw AppError.badRequest(
         `Requested amount (${amount}) exceeds your available balance (${availableBalance})`
       );
     }
 
-    teacherProfile.pendingPayouts -= amount;
+    teacherProfile.pendingPayouts += 1;
+    teacherProfile.balance -= amount;
     await teacherProfile.save();
 
     const payout = await Payout.create({
@@ -45,6 +50,7 @@ class PayoutService {
       amount,
       currency: "usd",
       teacherNote: note,
+      status: "pending"
     });
 
     return payout;
@@ -60,9 +66,10 @@ class PayoutService {
 
   async getAll(filters = {}) {
     const query = {};
-    if (filters.status) {
-      query.status = filters.status;
-    }
+    if (filters.status) query.status = filters.status;
+    if (filters.from) query.createdAt = { $gte: filters.from };
+    if (filters.to) query.createdAt = { $lte: filters.to };
+    
 
     return Payout.find(query)
       .populate("teacher", "name email")
@@ -76,8 +83,7 @@ class PayoutService {
    * @param {object} payload : { status, adminNote, referenceIds, period }
    * @returns {Payout}
    * */
-  async updateStatus(payoutId, adminId, payload = {}) {
-    const { status, adminNote } = payload;
+  async updateStatus(payoutId, adminId, status, note) {
     if (!status) throw AppError.badRequest("status is required");
 
     const payout = await Payout.findById(payoutId);
@@ -95,7 +101,7 @@ class PayoutService {
     
     payout.status = status;
     payout.approvedBy = adminId;
-    payout.adminNote = adminNote || status === "rejected" ? "Rejected" : "Approved";
+    payout.adminNote = note || status === "rejected" ? "Rejected" : "Approved";
 
     await payout.save();
     return payout;
@@ -111,7 +117,7 @@ class PayoutService {
     const teacherProfile = await TeacherProfile.findOne({ user: teacherId });
     if (!teacherProfile) return;
 
-    teacherProfile.pendingPayouts += amount;
+    teacherProfile.balance += amount;
     await teacherProfile.save();
   }
 }

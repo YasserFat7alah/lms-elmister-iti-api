@@ -59,6 +59,12 @@ const EnrollmentSchema = new Schema(
 
     subscriptionId: {
       type: String,
+      unique: true,
+      index: true,
+    },
+
+    checkoutSessionId: {
+      type: String,
     },
 
     priceId: {
@@ -91,26 +97,6 @@ const EnrollmentSchema = new Schema(
     cancelAtPeriodEnd: {
       type: Boolean,
       default: false,
-    },
-
-    transactionId: {
-      type: String,
-    },
-
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-
-    currency: {
-      type: String,
-      default: "usd",
-      lowercase: true,
-    },
-
-    receiptURL: {
-      type: String,
     },
 
     paidAt: { type: Date },

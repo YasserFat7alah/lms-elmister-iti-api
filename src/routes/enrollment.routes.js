@@ -9,7 +9,7 @@ const { authenticate, authorize } = authMiddleware;
 router.use(authenticate);
 
 router.post("/checkout/:groupId", authorize("parent"),
-  enrollmentController.createCheckoutSession
+  enrollmentController.enroll
 );
 
 router.get("/me", authorize("parent"), enrollmentController.listMine);
