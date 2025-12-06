@@ -23,7 +23,8 @@ export class ReviewController {
      * @route patch api/v1/reviews/:id
      * */
     updateReview = asyncHandler(async (req, res) => {
-        const { reviewId, rating, comment } = req.body;
+        const { reviewId } = req.params;
+        const {  rating, comment } = req.body;
         const review = await this.reviewService.updateReview(reviewId, req.user._id, rating, comment);
         res.status(200).json({
             success: true,

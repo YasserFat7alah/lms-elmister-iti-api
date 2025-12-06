@@ -4,7 +4,7 @@ import BaseService from "./base.service.js";
 
 export class ReviewService extends BaseService {
     constructor({ model, courseService }) {
-        super({ model });
+        super( model );
         this.courseService = courseService;
     }
 
@@ -20,7 +20,7 @@ export class ReviewService extends BaseService {
      */
     async createReview(userId, courseId, rating, comment) {
         // Prevent duplicate review by same user
-        const existing = await super.findById({ user: userId, course: courseId });
+        const existing = await this.model.findOne({ user: userId, course: courseId });
         if (existing) {
             throw AppError.badRequest("You have already reviewed this course");
         }
@@ -107,7 +107,7 @@ export class ReviewService extends BaseService {
      * @returns {Promise<Review[]>} An array of review objects
      */
     async getReviewsByCourse(courseId) {
-        return super.findById({ course: courseId }).populate("user", "name email");
+        return this.model.find({ course: courseId }).populate("course", "title").populate("user", "name email");
     }
 }
 
