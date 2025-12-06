@@ -85,12 +85,12 @@ class UserService extends BaseService {
                 updated[key] = data[key];
             }
         });
-        
+        if(avatar) updated.avatar = avatar;
         if (Object.keys(updated).length === 0 && !avatar ) throw AppError.badRequest('No valid fields provided');
 
 
     
-        const updatedUser = await this.updateById(userId, { ...updated, avatar }, { new: true });
+        const updatedUser = await this.updateById(userId, { ...updated }, { new: true });
     
     return this.sanitize(updatedUser);
   }

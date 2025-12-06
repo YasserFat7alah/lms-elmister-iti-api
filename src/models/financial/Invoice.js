@@ -23,31 +23,7 @@ const invoiceSchema = new mongoose.Schema({
     index: true,
   },
 
-  teacher: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-    index: true,
-  },
-
-  parent: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-
-  student: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-
   /* --- --- --- AMOUNTS --- --- --- */
-  amount: {
-    type: Number,
-    required: true,
-    min: 0,
-  },
 
   amountPaid: {
     type: Number,
