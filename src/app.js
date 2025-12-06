@@ -16,6 +16,7 @@ import { teacherRouter } from "./routes/users/teacher.routes.js";
 import { enrollmentRouter } from "./routes/enrollment.routes.js";
 import { payoutRouter } from "./routes/payout.routes.js";
 import { webhookRouter } from "./routes/webhook.routes.js";
+import { testimonialRouter } from "./routes/testimonial.routes.js";
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/api/v1/groups", groupRouter);
 app.use("/api/v1/lessons", lessonRouter);
 app.use("/api/v1/enrollments", enrollmentRouter);
 app.use("/api/v1/payouts", payoutRouter);
+app.use("/api/v1/testimonials", testimonialRouter);
 
 
 
