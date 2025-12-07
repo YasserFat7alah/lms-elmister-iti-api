@@ -18,17 +18,54 @@ class CourseController {
         this.courseService = courseService;
     }
 
-    /**
-     * Create a new Course
+    /* --- --- --- Helper Methods --- --- --- */
+
+    /** Private method to filter body based on role
+     * @param {string} role - The role of the user
+     * @param {object} body - The body of the request
+     * @returns {object} - The filtered body    
+     * */
+    _filterBody(role, body) {
+        const allowedFields = {
+            admin: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'status', 'language', 'tags', 'teacherId', 'price', 'isFree'], // Admin can edit all
+            teacher: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'language', 'tags'], // Teacher cannot edit teacherId, status (directly), or stats
+            parent: [], // Parents cannot create/edit courses
+            student: [] // Students cannot create/edit courses
+        };
+
+        const allowed = allowedFields[role] || [];
+        const filtered = {};
+        
+        Object.keys(body).forEach(key => {
+            if (allowed.includes(key)) filtered[key] = body[key];
+        });
+
+        return filtered;
+    }
+
+    /** Create a new Course
      * @route POST /api/v1/groups
     */
     createCourse = asyncHandler(async (req, res, next) => {
-        const data = req.body;
-        const file = req.file ? req.file : null;
+        const { id, role } = req.user;
 
-        data.teacherId = req.user._id;
+        if (!['admin', 'teacher'].includes(role)) throw AppError.forbidden("Only teachers and admins can create courses");
+        
+        const payload = this._filterBody(role, req.body);
+        const file = req.file || null;
 
-        const newCourse = await this.courseService.createCourse(data, file);
+        if (role === 'teacher') {
+            payload.teacherId = id;
+            payload.status = 'draft'; 
+
+        } else if (role === 'admin') {
+            if (!req.body.teacherId) throw AppError.badRequest("Admin must specify a teacherId");
+            payload.teacherId = req.body.teacherId; 
+
+        }
+
+        const newCourse = await this.courseService.createCourse(role, file, payload);
+
         res.status(201).json({
             success: true,
             message: "Course created successfully",

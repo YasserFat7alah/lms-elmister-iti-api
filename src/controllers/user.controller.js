@@ -54,7 +54,6 @@ class UserController {
 
     // const userId = req.user.id;
     // const userRole = req.user.role;
-
     const users = await this.userService.findAll({ role, subject, name, gradeLevel } , { page, limit });
     res.status(200).json({
       success: true,

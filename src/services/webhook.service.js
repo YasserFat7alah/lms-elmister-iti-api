@@ -215,6 +215,7 @@ class WebhookService {
      * @param enrollment :
      * @param subscription : 
      * @param fee : platform fee -fraction ( default: 0.1 )
+     * */
     async processFinancials(invoice, enrollment, subscription, fee=0.1) {
         try {
             const amountPaid = invoice.amount_paid / 100 || 0;

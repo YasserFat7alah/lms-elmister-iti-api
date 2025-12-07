@@ -19,11 +19,9 @@ class CourseService extends BaseService {
 
         if (thumbnailFile) { // If there's a thumbnail to upload
             const uploadResult = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/", { resource_type: "image" });
-
-            thumbnail = {
-                ...uploadResult
-            };
+            thumbnail = { ...uploadResult };
         }
+
         const newCourse = await super.create({ ...data, thumbnail });
         return newCourse;
     }
