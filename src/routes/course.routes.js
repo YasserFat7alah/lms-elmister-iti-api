@@ -18,8 +18,8 @@ router.get("/:id", courseController.getCourseById);
 
 /* --- --- --- PROTECTED ROUTES --- --- --- */
 router.use(authorize("teacher", "admin"));
-router.post("/", validate(createCourseSchema), uploadThumbnail, courseController.createCourse);
-router.patch("/:id", validate(updateCourseSchema), uploadThumbnail, courseController.updateCourseById);
+router.post("/", uploadThumbnail, validate(createCourseSchema), courseController.createCourse);
+router.patch("/:id", uploadThumbnail, validate(updateCourseSchema), courseController.updateCourseById);
 router.delete("/:id", courseController.deleteCourseById);
 
 export { router as courseRouter };

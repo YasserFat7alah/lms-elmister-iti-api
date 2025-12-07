@@ -42,3 +42,29 @@ export const loginSchema = joi.object({
         'string.min': 'Password must be at least 8 characters long'
     })
 })
+
+//change password
+export const changePasswordSchema = joi.object({
+    currentPassword: joi.string().required().messages({
+        'any.required': 'Current password is required'
+    }),
+    newPassword: joi.string().required().min(8).messages({
+        'any.required': 'New password is required',
+        'string.min': 'New password must be at least 8 characters long'
+    })
+});
+
+//forgot password
+export const forgotPasswordSchema = joi.object({
+    email: joi.string().email().required().messages({
+        'any.required': 'Email is required',
+        'string.email': 'Email must be a valid email address'
+    })
+});
+
+//reset password
+export const resetPasswordSchema = joi.object({
+    email: joi.string().email().required(),
+    otp: joi.string().required(),
+    newPassword: joi.string().required().min(8)
+});

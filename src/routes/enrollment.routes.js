@@ -8,7 +8,10 @@ const { authenticate, authorize } = authMiddleware;
 
 router.use(authenticate);
 
-router.post("/checkout/:groupId", authorize("parent"),
+import validate from "../middlewares/validate.middleware.js";
+import { enrollSchema } from "../validation/enrollment.validation.js";
+
+router.post("/checkout/:groupId", authorize("parent"), validate(enrollSchema),
   enrollmentController.enroll
 );
 

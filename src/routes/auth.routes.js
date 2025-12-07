@@ -1,7 +1,7 @@
     import express from "express";
     import authController from "../controllers/auth.controller.js";
     import validate from "../middlewares/validate.middleware.js";
-    import { registerSchema, loginSchema } from "../validation/auth.validation.js";
+    import { registerSchema, loginSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from "../validation/auth.validation.js";
     import authMW from "../middlewares/auth.middleware.js";
     import passport from "../config/passport/index.js";
 
@@ -16,9 +16,9 @@
     router.post("/refresh-token", authController.refreshToken);// to refresh token automatically 
 
     /* --- --- --- PASSWORD MANAGEMENT --- --- --- */
-    router.post("/change-password", authenticate, authController.changePassword);
-    router.post("/forgot-password", authController.forgotPassword);
-    router.post("/reset-password", authController.resetPassword);
+    router.post("/change-password", authenticate, validate(changePasswordSchema), authController.changePassword);
+    router.post("/forgot-password", validate(forgotPasswordSchema), authController.forgotPassword);
+    router.post("/reset-password", validate(resetPasswordSchema), authController.resetPassword);
 
     /* --- --- --- EMAIL VERIFICATION --- --- --- */
     router.get("/verify-email", authController.verifyEmailLink); // GET for clicking link in email
