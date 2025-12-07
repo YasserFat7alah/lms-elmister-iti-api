@@ -16,13 +16,20 @@ export function initSocket(server, options = {}) {
     io.on("connection", (socket) => {
         console.log("New client connected:", socket.id);
 
-        // Join admin room
-        socket.on("joinAdminRoom", () => {
-            socket.join("admins");
-            console.log(`Socket ${socket.id} joined admins room`);
+        /**
+         * Join rooms dynamically
+         * roles: 'admin', 'teacher', 'student', 'parent', 'user'
+         * userId: for personal notifications
+         * groupId: for course/class group notifications
+         */
+        socket.on("joinRoom", ({ role, userId, groupId }) => {
+            if (role) socket.join(role);
+            if (userId) socket.join(`user_${userId}`);
+            if (groupId) socket.join(`group_${groupId}`);
+
+            console.log(`Socket ${socket.id} joined rooms:`, { role, userId, groupId });
         });
 
-        //handle user disconnect
         socket.on("disconnect", () => {
             console.log("Client disconnected:", socket.id);
         });
@@ -37,28 +44,22 @@ export function initSocket(server, options = {}) {
  * @returns {Server} Socket.io instance
  */
 export function getIo() {
-    if (!io) {
-        throw new Error("Socket.io not initialized");
-    }
+    if (!io) throw new Error("Socket.io not initialized");
     return io;
 }
 
 /**
- * Emit notification to admins
- * @param {object} notification - Notification object to send
- * Example:
- * {
- *   title: "New Testimonial",
- *   message: "Ahmed Ossama added a testimonial",
- *   type: "NEW_TESTIMONIAL",
- *   refId: "objectId",
- *   refCollection: "testimonials",
- *   actor: "objectId"
- * }
+ * Emit a notification to specific rooms
+ * @param {object} options - options for emitting
+ * @param {string} options.receiverRole - role room (e.g., 'admin')
+ * @param {string} options.userId - user-specific room
+ * @param {string} options.groupId - group-specific room
+ * @param {object} options.notification - notification object to emit
  */
-export function emitAdminNotification(notification) {
-    if (!io) throw new Error("Socket.io not initialized");
+export async function emitNotification({ receiverRole, userId = null, groupId = null, notification }) {
 
-    // emit to all sockets in admin room
-    io.to("admins").emit("adminNotification", notification);
+    if (!io) throw new Error("Socket.io not initialized");
+    if (receiverRole) io.to(receiverRole).emit("notification", notification); //emit to role
+    if (userId) io.to(`user_${userId}`).emit("notification", notification); //emit to user
+    if (groupId) io.to(`group_${groupId}`).emit("notification", notification); //emit to group
 }

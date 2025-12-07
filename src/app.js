@@ -17,6 +17,8 @@ import { enrollmentRouter } from "./routes/enrollment.routes.js";
 import { payoutRouter } from "./routes/payout.routes.js";
 import { webhookRouter } from "./routes/webhook.routes.js";
 import { testimonialRouter } from "./routes/testimonial.routes.js";
+import { notificationRouter } from "./routes/notification.routes.js";
+
 
 const app = express();
 
@@ -49,6 +51,7 @@ app.use("/api/v1/lessons", lessonRouter);
 app.use("/api/v1/enrollments", enrollmentRouter);
 app.use("/api/v1/payouts", payoutRouter);
 app.use("/api/v1/testimonials", testimonialRouter);
+app.use("/api/v1/notifications", notificationRouter);
 
 
 

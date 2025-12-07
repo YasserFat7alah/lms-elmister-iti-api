@@ -1,7 +1,9 @@
 import Testimonials from "../models/Testimonials.js";
 import AppError from "../utils/app.error.js";
 import BaseService from "./base.service.js";
-import { emitAdminNotification } from "../config/socket/index.js";
+import { emitNotification } from "../config/socket/index.js";
+import notificationService from "./notification.service.js";
+import User from "../models/users/User.js";
 
 class TestimonialService extends BaseService {
     constructor(model) {
@@ -35,13 +37,19 @@ class TestimonialService extends BaseService {
             throw AppError.badRequest("You can only submit one testimonial per day.");
         }
         const testimonial = await super.create(data);
-        emitAdminNotification({
+        const populatedUser = await User.findById(user);
+        const notification = await notificationService.notifyAdmins({
             title: "New Testimonial",
-            message: `A user submitted a testimonial`,
+            message: `${populatedUser.name || "A user"} submitted a testimonial`,
             type: "NEW_TESTIMONIAL",
+            actor: populatedUser._id,
             refId: testimonial._id,
-            refCollection: "testimonials",
-            actor: user
+            refCollection: "testimonials"
+        });
+
+        emitNotification({
+            receiverRole: "admin",
+            notification
         });
 
         return testimonial;

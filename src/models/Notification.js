@@ -11,14 +11,20 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["NEW_USER", "NEW_TESTIMONIAL", "NEW_PAYMENT", "SYSTEM", "ALERT", "New_Enrollment"],
+    enum: ["NEW_USER", "NEW_TESTIMONIAL", "NEW_PAYMENT", "SYSTEM", "ALERT", "New_Enrollment", "NEW_LESSON"],
     default: "SYSTEM"
   },
 
   receiverRole: {
     type: String,
-    enum: ["admin", "teacher", "student","parent",'user'],
+    enum: ["admin", "teacher", "student", "parent", 'user'],
     default: "admin"
+  },
+
+  receiver: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
   },
   // link to resource (userId, testimonialId, etc)
   refId: {
@@ -57,6 +63,8 @@ const notificationSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // .....................indexes..........................
+notificationSchema.index({ receiver: 1, isRead: 1 });
+notificationSchema.index({ receiverRole: 1, createdAt: -1 });
 notificationSchema.index({ isRead: 1, createdAt: -1 });
 notificationSchema.index({ actor: 1, createdAt: -1 });
 
