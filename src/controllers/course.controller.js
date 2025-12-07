@@ -1,5 +1,8 @@
 import asyncHandler from "express-async-handler";
 import AppError from "../utils/app.error.js";
+import enrollmentService from "../services/subscriptions/enrollment.service.js";
+import courseService from "../services/course.service.js";
+import ParentProfile from "../models/users/ParentProfile.js";
 
 
 /**
@@ -14,8 +17,9 @@ import AppError from "../utils/app.error.js";
  * - delete: Delete a course by ID
  */
 class CourseController {
-    constructor(courseService) {
-        this.courseService = courseService;
+    constructor({...services}) {
+        this.courseService = services.courseService;
+        this.enrollmentService = services.enrollmentService;
     }
 
     /* --- --- --- Helper Methods --- --- --- */
@@ -44,7 +48,8 @@ class CourseController {
     }
 
     /** Create a new Course
-     * @route POST /api/v1/groups
+     * @body {object} - The course data
+     * @access Private (teacher, admin)
     */
     createCourse = asyncHandler(async (req, res, next) => {
         const { id, role } = req.user;
@@ -64,7 +69,7 @@ class CourseController {
 
         }
 
-        const newCourse = await this.courseService.createCourse(role, file, payload);
+        const newCourse = await this.courseService.createCourse(payload, file);
 
         res.status(201).json({
             success: true,
@@ -74,17 +79,90 @@ class CourseController {
 
     });
 
-    /**
-     * Get All Courses
-     * @route Get /api/v1/groups
+    /** Get All Courses
+     * @query {string} page - The page number
+     * @query {string} limit - The number of items per page
+     * @access varies
     */
     getAllCourses = asyncHandler(async (req, res, next) => {
-        const { page, limit, ...filters } = req.query;
-        const data = await this.courseService.getCourses(filters, { page, limit });
+        const { page, limit, minPrice, maxPrice, ...filters } = req.query;
+        const { id, role } = req.user || {};
+
+        let populateOptions = [{ path: 'teacherId', select: 'name username avatar email emailVerified teacherData' }];
+        let calculatePrice = false; // Only for public
+        
+        // --- Role Logic ---
+
+        // 1. Student: Only subscribed courses + Only subscribed group populated
+        if (role === 'student') {
+            const enrollments = await this.enrollmentService.listByStudent(id);
+            const courseIds = enrollments.map(e => e.course._id || e.course);
+            const groupIds = enrollments.map(e => e.group._id || e.group); // Get IDs of groups student is in
+            
+            filters._id = { $in: courseIds };
+            filters.status = 'published';
+            
+            populateOptions.push({ 
+                    path: 'groups', 
+                    match: { _id: { $in: groupIds } },
+                    select: 'title schedule status' 
+            });
+        } 
+        
+        else if (role === 'parent') {
+            const parentProfile = await ParentProfile.findOne({ user: id });
+            if (!parentProfile?.children?.length) {
+                return res.status(200).json({ success: true, total: 0, data: [] });
+            }
+
+            // Find all active enrollments for all children
+            const enrollments = await this.enrollmentService.model.find({
+                student: { $in: parentProfile.children },
+                status: 'active'
+            });
+
+            const courseIds = enrollments.map(e => e.course);
+            const groupIds = enrollments.map(e => e.group);
+
+            filters._id = { $in: courseIds };
+            filters.status = 'published';
+
+            populateOptions.push({ 
+                    path: 'groups', 
+                    match: { _id: { $in: groupIds } },
+                    select: 'title schedule status studentsCount' 
+            });
+        }
+
+        else if (role === 'teacher') {
+            filters.teacherId = id;
+            populateOptions.push({ path: 'groups' });
+        }
+
+        else if (role === 'admin') {
+            populateOptions.push({ path: 'groups' });
+        }
+        
+        // 5. Public: Published courses + Price Calculation (No groups populated)
+        else {
+            filters.status = 'published';
+            calculatePrice = true;
+        }
+
+        // --- Execute Service ---
+        const data = await this.courseService.getCourses(filters, { 
+            page, 
+            limit, 
+            minPrice, 
+            maxPrice,
+            populate: populateOptions,
+            calculatePrice
+        });
+
         res.status(200).json({
             success: true,
+            message: "Courses fetched successfully",
             ...data
-
         });
     });
 
@@ -98,42 +176,54 @@ class CourseController {
             success: true,
             data: course
         });
-    });
-
+    });//
 
     /**
      * Edit a Course
      * @route Patch /api/v1/groups/:id
     */
     updateCourseById = asyncHandler(async (req, res, next) => {
-        const data = req.body;
-        const file = req.file ? req.file : null;
+        const courseId = req.params.id;
+        const { role: userRole, id: userId } = req.user;
+        const file = req.file || null;
+        const requestedStatus = req.body.status;
+        const payload = this._filterBody(userRole, req.body);
 
-        if (!data && !file)
-            throw AppError.badRequest("No data provided for update");
-        const id = req.params.id;
-        const updatedCourse = await this.courseService.updateCourseById(
-            id,
-            data,
-            file,
-            req.user._id,
-            req.user.role
-        );
+        if (Object.keys(payload).length === 0 && !file && !requestedStatus) {
+             throw AppError.badRequest("No data provided for update");
+        }
 
-        res.status(200).json(updatedCourse);
+        let context = { userId, userRole, isPublishRequest: false };
+
+         if (userRole === 'teacher') {
+            if (requestedStatus === 'published' || requestedStatus === 'in-review') {
+                context.isPublishRequest = true;
+                context.requestedStatus = requestedStatus;
+            }
+        } else if (userRole === 'admin') {
+            if (requestedStatus) payload.status = requestedStatus;
+        }
+
+        const updatedCourse = await this.courseService.updateCourseById(courseId, payload, file, context);
+
+        res.status(200).json({
+            success: true,
+            message: "Course updated successfully",
+            data: updatedCourse
+        });
     });
 
-
-    /**
-  * Delete a Course
-  * @route DELETE /api/v1/groups/:id
- */
+    /** Delete a Course by ID
+     * @route DELETE /api/v1/groups/:id
+     */
     deleteCourseById = asyncHandler(async (req, res, next) => {
         const courseId = req.params.id;
+        const { role, id: userId } = req.user;
+        const isHardDelete = role === 'admin';
+
         await this.courseService.deleteCourseById(
             courseId,
-            req.user._id,
-            req.user.role
+            { userId, userRole: role, isHardDelete }
         );
 
         res.status(200).json({
@@ -143,4 +233,7 @@ class CourseController {
     });
 }
 
-export default CourseController;
+export default new CourseController({
+    courseService,
+    enrollmentService
+});

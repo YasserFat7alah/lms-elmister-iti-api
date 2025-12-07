@@ -1,16 +1,20 @@
 import stripe from "./../../config/stripe.js";
+import BaseService from "../base.service.js";
 import AppError from "../../utils/app.error.js";
-import Enrollment from "../../models/Enrollment.js";
-import Group from "../../models/Group.js";
+import paymentService from "../payment.service.js";
+import { CLIENT_URL } from "../../utils/constants.js";
+
+/* --- --- --- MODELS --- --- --- */
 import User from "../../models/users/User.js";
+import Group from "../../models/Group.js";
+import Enrollment from "../../models/Enrollment.js";
 import ParentProfile from "../../models/users/ParentProfile.js";
 import StudentProfile from "../../models/users/StudentProfile.js";
 import TeacherProfile from "../../models/users/TeacherProfile.js";
-import { CLIENT_URL } from "../../utils/constants.js";
-import paymentService from "../payment.service.js";
 
-class EnrollmentService {
-  constructor() {
+class EnrollmentService extends BaseService {
+  constructor(model) {
+    super(model);
     this.activeStatuses = ["trialing", "active", "past_due"];
     this.platformFee = 0.1;
   }
@@ -155,11 +159,26 @@ class EnrollmentService {
    * @param {string} parentId : Authenticated Parent
    * @returns {Enrollment[]}
    * */
-  async listByParent(parentId) {
-    const enrollments = Enrollment.find({ parent: parentId })
+   async listByParent(parentId) {
+    const enrollments = this.model.find({ parent: parentId })
       .sort("-createdAt")
       .populate("group", "title startingDate startingTime")
       .populate("student", "name email");
+
+    return enrollments;
+  }
+
+  /** List all enrollments for a student
+   * @param {string} studentId
+   * @returns {Enrollment[]}
+   * */
+  async listByStudent(studentId) {
+    const enrollments = await this.model.find({ 
+            student: studentId, 
+            status: { $in: ['active', 'trialing'] } 
+        })
+        .populate('group')
+        .select('group course status');
 
     return enrollments;
   }
@@ -269,4 +288,4 @@ class EnrollmentService {
   
 }
 
-export default new EnrollmentService();
+export default new EnrollmentService(Enrollment);

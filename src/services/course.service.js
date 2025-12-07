@@ -2,6 +2,7 @@ import Course from "../models/Course.js";
 import BaseService from "./base.service.js";
 import cloudinaryService from "./cloudinary.service.js";
 import AppError from "../utils/app.error.js";
+import Group from "../models/Group.js";
 
 class CourseService extends BaseService {
 
@@ -14,7 +15,7 @@ class CourseService extends BaseService {
      * @param {Object} thumbnailFile - The thumbnail file to upload.
      * @returns {Object} The newly created course.
      */
-    async createCourse(data, thumbnailFile) {
+    async createCourse(payload, thumbnailFile) {
         let thumbnail = null;
 
         if (thumbnailFile) { // If there's a thumbnail to upload
@@ -22,49 +23,67 @@ class CourseService extends BaseService {
             thumbnail = { ...uploadResult };
         }
 
-        const newCourse = await super.create({ ...data, thumbnail });
+        const newCourse = await super.create({ ...payload, thumbnail });
         return newCourse;
     }
 
 
-    /**
-     * Retrieve courses by given filters and options.
+    /** Retrieve courses by given filters and options.
      * @param {Object} filters - Filter objects.
      * @param {Object} options - Options for pagination.
      * @return {Promise<Object>} - An object containing total number of courses, current page, total number of pages, and an array of course objects.
      */
     async getCourses(filters, options) {
-        const { teacherId, status, subject, gradeLevel } = filters;
-        const { page = 1, limit = 10 } = options;
+        const { page = 1, limit = 10, minPrice, maxPrice, populate, calculatePrice } = options;
+        const skip = (page - 1) * limit;
 
-        const queryObj = {};
-        if (teacherId) queryObj.teacherId = teacherId;
-        if (status) queryObj.status = status;
-        if (subject) queryObj.subject = subject;
-        if (gradeLevel) queryObj.gradeLevel = gradeLevel;
+        if (minPrice !== undefined || maxPrice !== undefined) {
+            const priceQuery = {};
+            if (minPrice) priceQuery.price = { $gte: Number(minPrice) };
+            if (maxPrice) priceQuery.price = { ...priceQuery.price, $lte: Number(maxPrice) };
+            
+            const eligibleGroups = await Group.find(priceQuery).distinct('courseId');
+            
+            if (filters._id) {
+                filters.$and = [{ _id: filters._id }, { _id: { $in: eligibleGroups } }];
+                delete filters._id;
+            } else {
+                filters._id = { $in: eligibleGroups };
+            }
+        }
 
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-        const skip = (pageNum - 1) * limitNum;
+        const query = this.model.find(filters)
+            .skip(skip)
+            .limit(parseInt(limit))
+            .select('-__v')
+            .lean();
 
+        if (populate) query.populate(populate);
+
+        // 4. Execute Query & Count
         const [courses, total] = await Promise.all([
-            this.model
-                .find(queryObj)
-                .skip(skip)
-                .limit(limitNum)
-                .populate('teacherId', 'name username')
-                .sort({ createdAt: -1 }),
-            super.count(queryObj)
+            query,
+            this.model.countDocuments(filters)
         ]);
 
+        if (calculatePrice && courses.length > 0) {
+            const courseIds = courses.map(c => c._id);
+            const pricingMap = await this._getMinPrices(courseIds);
+
+            courses.forEach(course => {
+                const priceInfo = pricingMap[course._id.toString()];
+                course.minCost = priceInfo ? priceInfo.minCost : 0; 
+                course.currency = priceInfo ? priceInfo.currency : 'usd';
+            });
+        }
+
         return {
-            total,  // Total number of docs "Courses"
-            page: pageNum,
-            pages: Math.ceil(total / limitNum), // Total number of pages
+            total,
+            page: parseInt(page),
+            pages: Math.ceil(total / limit),
             data: courses
         };
     }
-
 
     /**
      * Retrieve a course by ID
@@ -83,44 +102,53 @@ class CourseService extends BaseService {
         return course;
     }
 
-
-    /**
-     * Updates a course by ID.
+    /** Updates a course by ID.
      * Checks if the teacher is the owner of the course before updating.
      * If a new thumbnail is provided, it will replace the old one.
      * @param {string} _id - The ID of the course to update
      * @param {Object} data - The updated course data
      * @param {Object} thumbnailFile - The new thumbnail file to upload
-     * @param {string} userId - The ID of the user updating the course
-     * @param {string} userRole - The role of the user updating the course
+     * @param {Object} context - The request context (userId, userRole, isPublishRequest, requestedStatus) 
      * @returns {Object} The updated course
      * @throws {Forbidden} You can only update your own courses
      */
-    async updateCourseById(_id, data, thumbnailFile, userId, userRole) {
+    async updateCourseById(_id, data, thumbnailFile, context) {
+        const { userId, userRole, isPublishRequest, requestedStatus } = context;
+
+        // Existance check
         const course = await super.findById(_id);
+        if (!course) throw AppError.notFound("Course not found");
 
-        if (!course) {
-            throw AppError.notFound("Course not found");
-        }
-
-        if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) {
-            throw AppError.forbidden("You can only update your own courses");
-        }
+        // Ownership check
+        if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) { 
+            throw AppError.forbidden("You can only update your own courses");}
+        
+        // Thumbnail update
         let thumbnail = course.thumbnail;
-
         if (thumbnailFile) {
-            if (thumbnail?.publicId) {
+            const uploaded = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/");
+
+            if (thumbnail?.publicId && uploaded.publicId) 
                 await cloudinaryService.delete(thumbnail.publicId, thumbnail.type);
+
+            if(uploaded.publicId) thumbnail = { ...uploaded };
+        }
+
+        let updates = { ...data, thumbnail };
+
+        // Teacher Logic
+        if (userRole === 'teacher') {
+            if (isPublishRequest && requestedStatus === 'in-review') {
+                if (!course.groups || course.groups.length === 0) {
+                    throw AppError.badRequest("Cannot request publish without at least one group.");
+                }
+                updates.status = 'in-review';
             }
 
-            //Upload new one
-            const uploaded = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/");
-            thumbnail = {
-                ...uploaded
-            };
+            if (course.status === 'published' && !isPublishRequest) updates.status = 'in-review';
         }
 
-        return await super.updateById(_id, { ...data, thumbnail });
+        return await super.updateById(_id, updates);
     }
 
     /** Delete course and its associated thumbnail from Cloudinary
@@ -129,30 +157,31 @@ class CourseService extends BaseService {
      * @throws {Forbidden} You can only delete your own courses
      * @throws {BadRequest} Cannot delete course with existing groups
      */
-    async deleteCourseById(_id, userId, userRole) {
-        const course = await super.findById(_id);
-        if (!course) {
-            throw AppError.notFound("Course not found");
-        }
+    async deleteCourseById(_id, context) {
+        const { userId, userRole, isHardDelete } = context;
 
-        // Teachers can only delete their own courses
+        // Existance check
+        const course = await this.model.findById(_id);
+        if (!course) throw AppError.notFound("Course not found");
+
+        // Ownership Check
         if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) {
             throw AppError.forbidden("You can only delete your own courses");
         }
 
-        // Prevent deletion if course has groups
-        if (course.groups && course.groups.length > 0) {
-            throw AppError.badRequest("Cannot delete course with existing groups");
-        }
+        // Teacher: Soft Delete (Archive)
+        if (!isHardDelete) return await super.updateById(_id, { status: 'archived' });
+        
 
-        if (course.thumbnail?.publicId) {
-            await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type);
+        // Admin: Hard Delete
+        if (isHardDelete) {     
+             if (course.thumbnail?.publicId) {
+                await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type);
+            }
+            return await super.deleteById(_id);
         }
-
-        return await super.deleteById(_id);
     }
 
-    //later..............!!!!
     async updateStatistics(courseId) {
         const course = await super.findById(courseId);
 
@@ -166,7 +195,39 @@ class CourseService extends BaseService {
         return course;
     }
 
+    /**
+     * Aggregates Group collection to find the lowest price for a list of courses
+     * @param {Array} courseIds 
+     * @returns {Object} Map { courseId: { minCost, currency } }
+     */
+    async _getMinPrices(courseIds) {
+        const stats = await Group.aggregate([
+            { 
+                $match: { 
+                    courseId: { $in: courseIds },
+                    status: { $ne: 'closed' } 
+                } 
+            },
+            { $sort: { price: 1 } },
+            {
+                $group: {
+                    _id: "$courseId",
+                    minCost: { $first: "$price" },
+                    currency: { $first: "$currency" }
+                }
+            }
+        ]);
+
+        const map = {};
+        stats.forEach(item => {
+            map[item._id.toString()] = {
+                minCost: item.minCost,
+                currency: item.currency
+            };
+        });
+        return map;
+    }
 }
 
-export default CourseService;
+export default new CourseService(Course);
 

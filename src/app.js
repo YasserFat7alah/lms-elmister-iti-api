@@ -17,6 +17,7 @@ import { enrollmentRouter } from "./routes/enrollment.routes.js";
 import { payoutRouter } from "./routes/payout.routes.js";
 import { webhookRouter } from "./routes/webhook.routes.js";
 import { testimonialRouter } from "./routes/testimonial.routes.js";
+import { publicRouter } from "./routes/public.routes.js";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /* --- --- --- END POINTS --- --- --- */
+app.use("/api/v1/public", publicRouter);
 app.use("/api/v1/auth",authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/teachers", teacherRouter);

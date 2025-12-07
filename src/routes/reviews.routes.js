@@ -2,7 +2,7 @@ import express from "express";
 import ReviewController from "../controllers/reviews.controller.js";
 import ReviewService from "../services/review.service.js";
 import Review from "../models/Reviews.js";
-import CourseService from "../services/course.service.js";
+import courseService from "../services/course.service.js";
 import Course from "../models/Course.js";
 import auth from "../middlewares/auth.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
@@ -14,7 +14,6 @@ const router = express.Router();
 const { authenticate, authorize } = auth;
 
 //instances
-const courseService = new CourseService(Course);
 const reviewService = new ReviewService({ model: Review, courseService});
 const reviewController = new ReviewController({ reviewService });
 
