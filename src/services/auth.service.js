@@ -13,6 +13,8 @@ import {
 import TeacherProfile from "../models/users/TeacherProfile.js";
 import StudentProfile from "../models/users/StudentProfile.js";
 import ParentProfile from "../models/users/ParentProfile.js";
+import { emitNotification } from "../config/socket/index.js";
+import notificationService from "./notification.service.js";
 
 export class AuthService extends BaseService {
   constructor(userModel) {
@@ -91,6 +93,22 @@ export class AuthService extends BaseService {
     }
     //create user
     const newUser = await super.create(data);
+
+    // notify admins
+    const notification = await notificationService.notifyAdmins({
+      title: "New User Registration",
+      message: `${newUser.name} registered as ${newUser.role}`,
+      type: "NEW_USER",
+      actor: newUser?._id,
+      refId: newUser?._id,
+      refCollection: "users"
+    });
+
+    //emit to admin sockets
+    emitNotification({
+      receiverRole: "admin",
+      notification
+    });
     //generate tokens
     const { accessToken, refreshToken } = this.generateTokens(newUser);
 
@@ -136,7 +154,7 @@ export class AuthService extends BaseService {
     else if (role === "parent") profileExists = await ParentProfile.findOne({ user: userId });
 
     if (profileExists) throw AppError.badRequest(`Your ${role} profile is already completed.`);
-    
+
 
     if (role === "teacher") {
       await TeacherProfile.create({
@@ -145,7 +163,7 @@ export class AuthService extends BaseService {
         subjects: data.subjects,
         qualifications: data.qualifications,
       });
-      
+
     } else if (role === "student") {
       const grade = data.gradeLevel || data.grade;
       await StudentProfile.create({
@@ -153,7 +171,7 @@ export class AuthService extends BaseService {
         grade: grade,
         parent: data.parent,
       });
-      
+
     } else if (role === "parent") {
       await ParentProfile.create({
         user: userId,
@@ -164,12 +182,12 @@ export class AuthService extends BaseService {
     let user = await this.model.findById(userId).populate(`${role}Data`).lean();
 
     if (user[`${role}Data`]) {
-        user = { 
-            ...user, 
-            ...user[`${role}Data`],
-            isProfileCompleted: true 
-        };   
-        delete user[`${role}Data`];
+      user = {
+        ...user,
+        ...user[`${role}Data`],
+        isProfileCompleted: true
+      };
+      delete user[`${role}Data`];
     }
 
     return this.sanitize(user);

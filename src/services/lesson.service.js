@@ -2,6 +2,8 @@ import BaseService from "./base.service.js";
 import Lesson from "../models/Lesson.js";
 import AppError from "../utils/app.error.js";
 import cloudinaryService from "./cloudinary.service.js";
+import { emitNotification } from "../config/socket/index.js";
+import notificationService from "./notification.service.js";
 
 class LessonService extends BaseService {
     constructor(lessonModel, groupModel) {
@@ -21,7 +23,7 @@ class LessonService extends BaseService {
      */
     async createLesson(data, user, files) {
         const { groupId, order } = data;
-        const group = await this.groupModel.findById(groupId);
+        const group = await this.groupModel.findById(groupId).populate("students", "_id name");
         if (!group) throw AppError.notFound("Group not found");
 
         // teacher can only create lessons for his own groups
@@ -58,6 +60,26 @@ class LessonService extends BaseService {
         }
 
         const lesson = await super.create(lessonData);
+        group.lessons.push(lesson._id);
+        await group.save();
+
+        const studentIds = group.students?.map(s => s._id);
+
+        if (lesson.groupId) {
+            const notifications = await notificationService.notifyManyUsers({
+                userIds: studentIds,
+                title: "New Lesson",
+                message: `A new lesson "${lesson?.title}" was added to your group`,
+                type: "NEW_LESSON",
+                refId: lesson?._id || null,
+                refCollection: "Lesson"
+            });
+            studentIds.forEach(id => {
+                const notif = notifications.find(n => n.receiver.toString() === id.toString());
+                emitNotification({userId: id,notification: notif})}
+            );
+        
+        }
 
         return lesson;
     }
@@ -206,26 +228,26 @@ class LessonService extends BaseService {
      */
 
     async deleteDocument(lessonId, docId, user) {
-    const lesson = await this.model.findById(lessonId).populate("groupId");
-    if (!lesson) throw AppError.notFound("Lesson not found");
+        const lesson = await this.model.findById(lessonId).populate("groupId");
+        if (!lesson) throw AppError.notFound("Lesson not found");
 
-    // Prevent deleting if the teacher isn't the owner
-    if (user.role === "teacher" && lesson.groupId.teacherId.toString() !== user._id.toString())
-        throw AppError.forbidden();
+        // Prevent deleting if the teacher isn't the owner
+        if (user.role === "teacher" && lesson.groupId.teacherId.toString() !== user._id.toString())
+            throw AppError.forbidden();
 
-    const docIndex = lesson.document.findIndex(d => d._id.toString() === docId || d.publicId === docId);
-    if (docIndex === -1) throw AppError.notFound("Document not found");
+        const docIndex = lesson.document.findIndex(d => d._id.toString() === docId || d.publicId === docId);
+        if (docIndex === -1) throw AppError.notFound("Document not found");
 
-    // Delete document from cloudinary
-    await cloudinaryService.delete(lesson.document[docIndex].publicId, 
-         lesson.document[docIndex].type
-    );
+        // Delete document from cloudinary
+        await cloudinaryService.delete(lesson.document[docIndex].publicId,
+            lesson.document[docIndex].type
+        );
 
-    // Remove document from lesson
-    lesson.document.splice(docIndex, 1);
+        // Remove document from lesson
+        lesson.document.splice(docIndex, 1);
 
-    return await lesson.save();
-}
+        return await lesson.save();
+    }
 
 
     /**
@@ -237,32 +259,32 @@ class LessonService extends BaseService {
      * @returns {Promise<Object>} - An object containing a success message
      */
     async deleteLesson(id, user) {
-    const lesson = await this.model.findById(id).populate('groupId');
+        const lesson = await this.model.findById(id).populate('groupId');
 
-    if (!lesson) throw AppError.notFound("Lesson not found");
+        if (!lesson) throw AppError.notFound("Lesson not found");
 
-    //prevent deleting if the teacher isn't the owner
-    if (user.role === "teacher" && lesson.groupId.teacherId.toString() !== user._id.toString()) {
-        throw AppError.forbidden("You can only delete your own lessons");
-    }
-    // Delete video from cloudinary
-    if (lesson.video?.publicId) {
-        await cloudinaryService.delete(lesson.video.publicId,
-            lesson.video.type
-        );
-    }
-
-    // Delete documents from cloudinary
-    if (lesson.document?.length) {
-        for (const doc of lesson.document) {
-            await cloudinaryService.delete(doc.publicId,
-                 doc.type
+        //prevent deleting if the teacher isn't the owner
+        if (user.role === "teacher" && lesson.groupId.teacherId.toString() !== user._id.toString()) {
+            throw AppError.forbidden("You can only delete your own lessons");
+        }
+        // Delete video from cloudinary
+        if (lesson.video?.publicId) {
+            await cloudinaryService.delete(lesson.video.publicId,
+                lesson.video.type
             );
         }
+
+        // Delete documents from cloudinary
+        if (lesson.document?.length) {
+            for (const doc of lesson.document) {
+                await cloudinaryService.delete(doc.publicId,
+                    doc.type
+                );
+            }
+        }
+        await super.deleteById(id);
+        return { message: "Lesson and its content deleted successfully" };
     }
-    await super.deleteById(id);
-    return { message: "Lesson and its content deleted successfully" };
-}
 
     /**
      * Reorders lessons in a group by providing an array of lesson objects with their updated orders.
@@ -275,33 +297,33 @@ class LessonService extends BaseService {
      * @returns {Promise<Object>} - An object containing a success message
      */
     async reorder(groupId, orderedLessons, user) {
-    // Check if orderedLessons is an array and not empty
-    if (!Array.isArray(orderedLessons) || !orderedLessons.length) {
-        throw AppError.badRequest("Invalid data");
+        // Check if orderedLessons is an array and not empty
+        if (!Array.isArray(orderedLessons) || !orderedLessons.length) {
+            throw AppError.badRequest("Invalid data");
+        }
+
+        const group = await this.groupModel.findById(groupId);
+
+        if (!group) throw AppError.notFound("Group not found");
+
+        // Prevent reordering if the teacher isnt the owner
+        if (user.role === "teacher" && group.teacherId.toString() !== user._id.toString()) {
+            throw AppError.forbidden("You can't reorder lessons for this group");
+        }
+
+        const operations = orderedLessons.map((lesson) => {
+            return {
+                updateOne: {
+                    filter: { _id: lesson.lessonId, groupId },
+                    update: { $set: { order: lesson.order } },
+                },
+            };
+        });
+
+        await this.model.bulkWrite(operations);
+
+        return { message: "Lessons reordered successfully" };
     }
-
-    const group = await this.groupModel.findById(groupId);
-
-    if (!group) throw AppError.notFound("Group not found");
-
-    // Prevent reordering if the teacher isnt the owner
-    if (user.role === "teacher" && group.teacherId.toString() !== user._id.toString()) {
-        throw AppError.forbidden("You can't reorder lessons for this group");
-    }
-
-    const operations = orderedLessons.map((lesson) => {
-        return {
-            updateOne: {
-                filter: { _id: lesson.lessonId, groupId },
-                update: { $set: { order: lesson.order } },
-            },
-        };
-    });
-
-    await this.model.bulkWrite(operations);
-
-    return { message: "Lessons reordered successfully" };
-}
 }
 
 export default LessonService;

@@ -1,6 +1,14 @@
+import http from "http";
+import { initSocket } from "./config/socket/index.js";
 import app from "./app.js";
-import { PORT } from "./utils/constants.js";
+import { PORT,CLIENT_URL } from "./utils/constants.js";
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+const io = initSocket(server, { frontendOrigin: CLIENT_URL });
+
+
+
+
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

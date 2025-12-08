@@ -18,7 +18,13 @@ export class MulterUploader {
                 "video/wmv",
                 "video/flv",
                 "video/quicktime",
-                "application/pdf",
+                "application/pdf", //.pdf
+                "application/msword", //.doc
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", //.docx
+                "application/vnd.ms-powerpoint", //.ppt
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation", //.pptx
+                "text/plain" //.txt
+
             ];
 
             if (allowed.includes(file.mimetype)) cb(null, true);

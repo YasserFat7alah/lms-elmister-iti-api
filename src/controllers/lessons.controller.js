@@ -11,7 +11,6 @@ class GroupController {
     */
     createLesson = asyncHandler(async (req, res) => {
         const files = req.files ? req.files : null;
-        console.log(files);
 
         const lesson = await this.lessonService.createLesson(req.body, req.user, files);
 

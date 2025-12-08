@@ -50,6 +50,7 @@ app.get("/ping", (req, res) => {
 
 /* --- --- --- FALLBACK --- --- --- */
 app.use((req, res, next) => {
+    if (req.path.startsWith("/socket.io")) return next();
     next(AppError.notFound(`Cannot ${req.method} on '${req.originalUrl}'`));
 });
 

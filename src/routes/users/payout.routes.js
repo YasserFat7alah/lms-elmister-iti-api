@@ -1,8 +1,8 @@
 import express from "express";
-import payoutController from "../controllers/payout.controller.js";
-import auth from "../middlewares/auth.middleware.js";
-import validate from "../middlewares/validate.middleware.js";
-import { payoutRequestSchema } from "../validation/payout.validation.js";
+import payoutController from "../../controllers/payout.controller.js";
+import auth from "../../middlewares/auth.middleware.js";
+import validate from "../../middlewares/validate.middleware.js";
+import { payoutRequestSchema } from "../../validation/payout.validation.js";
 
 const router = express.Router();
 
