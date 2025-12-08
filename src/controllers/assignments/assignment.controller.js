@@ -16,10 +16,10 @@ class AssignmentController {
         const teacherId = req.user._id;
         const file = req.file ? req.file : null;
 
-        const { title, description, group, lesson, course, totalGrade, dueDate } = req.body;
+        const { title, description, group, lesson, totalGrade, dueDate } = req.body;
 
         const assignment = await this.assignmentService.createAssignment({
-            title, description, group, lesson, course, teacher: teacherId, totalGrade, dueDate, file
+            title, description, group, lesson, teacher: teacherId, totalGrade, dueDate, file
         });
 
         res.status(201).json({

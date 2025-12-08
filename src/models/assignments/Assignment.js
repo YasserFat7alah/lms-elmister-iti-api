@@ -54,12 +54,10 @@ const AssignmentSchema = new Schema(
 );
 
 // Ensure either group or lesson is defined
-AssignmentSchema.pre("validate", function (next) {
+AssignmentSchema.pre("validate", function () {
   if (!this.group && !this.lesson) {
-    next(new Error("Assignment must belong to a group or a lesson"));
-  } else {
-    next();
-  }
+    throw new Error("Assignment must belong to a group or a lesson");
+  } 
 });
 
 export default mongoose.model("Assignment", AssignmentSchema);

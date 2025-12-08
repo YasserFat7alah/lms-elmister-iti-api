@@ -1,6 +1,9 @@
 import BaseService from "../base.service.js";
 import AppError from "../../utils/app.error.js";
 import cloudinaryService from "../cloudinary.service.js";
+import Group from "../../models/Group.js";
+import Lesson from "../../models/Lesson.js";
+
 
 class AssignmentService extends BaseService {
     constructor(model) {
@@ -8,13 +11,31 @@ class AssignmentService extends BaseService {
     }
     async createAssignment({
         title, description, group,
-        lesson, course, teacher,
+        lesson, teacher,
         totalGrade = 100, dueDate, file
     }) {
+        let course;
+        if (group) {
+            const groupDoc = await Group.findById(group);
+            if (!groupDoc) throw AppError.notFound("Group not found");
+
+            course = groupDoc.courseId;
+        }
+
+        if (lesson) {
+            const lessonDoc = await Lesson.findById(lesson);
+            if (!lessonDoc) throw AppError.notFound("Lesson not found");
+
+            course = lessonDoc.groupId.courseId;
+        }
+
+        if (!course) {
+            throw AppError.badRequest("Assignment must belong to a group or a lesson");
+        }
 
         let uploadResult;
         if (file) {
-            uploadResult = await cloudinaryService.upload(file, `courses/${group || lesson ||course}/assignments`);
+            uploadResult = await cloudinaryService.upload(file, `courses/${group || lesson || course}/assignments`);
         }
         const assignment = await this.model.create({
             title, description, group,

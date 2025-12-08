@@ -15,7 +15,7 @@ const { authenticate, authorize } = auth;
 
 //.............................................Instances.........................................
 const assignmentService = new AssignmentService(Assignment);
-const assignmentController = new AssignmentController();
+const assignmentController = new AssignmentController(assignmentService);
 
 //..................................Protected routes.................................
 router.use(authenticate);
