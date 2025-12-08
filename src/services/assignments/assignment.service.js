@@ -68,6 +68,8 @@ class AssignmentService extends BaseService {
 
         const assignments = await this.model
             .find({ group: groupId })
+            .populate("group", "title")
+            .populate("course", "title")
             .populate("teacher", "name email")
             .sort({ dueDate: 1 })
 
@@ -78,6 +80,8 @@ class AssignmentService extends BaseService {
 
         const assignments = await this.model
             .find({ lesson: lessonId })
+            .populate("group", "title")
+            .populate("course", "title")
             .populate("teacher", "name email")
             .sort({ dueDate: 1 });
 

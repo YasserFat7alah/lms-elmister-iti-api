@@ -23,10 +23,10 @@ router.use(authenticate);
 // Create a new assignment
 router.post("/",authorize("teacher"), upload, validate(assignmentSchema), assignmentController.createAssignment);
 
-// Get all assignments by group
+// Get all assignments by group (teacher, student, parent of enrolled child)
 router.get("/group/:groupId",isEnrolled(), assignmentController.getAssignmentsByGroup);
 
-// Get all assignments by lesson
+// Get all assignments by lesson (teacher, student, parent of enrolled child)
 router.get("/lesson/:lessonId",isEnrolled(), assignmentController.getAssignmentsByLesson);
 
 // Get assignment by ID (teacher, student, parent of enrolled child)
