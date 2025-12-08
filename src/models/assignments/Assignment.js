@@ -4,8 +4,15 @@ const { Schema } = mongoose;
 
 const AssignmentSchema = new Schema(
   {
-    title: { type: String, required: true, trim: true },
-    description: { type: String, trim: true },
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    description: {
+      type: String,
+      trim: true
+    },
 
     // Target: either group or lesson
     group: {

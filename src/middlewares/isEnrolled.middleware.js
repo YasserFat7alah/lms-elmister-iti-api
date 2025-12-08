@@ -1,5 +1,5 @@
 import Enrollment from "../models/Enrollment.js";
-import Assignment from "../models/Assignment.js";
+import Assignment from "../models/assignments/Assignment.js";
 import AppError from "../utils/app.error.js";
 
 

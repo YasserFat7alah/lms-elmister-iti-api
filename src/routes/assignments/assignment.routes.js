@@ -3,6 +3,8 @@ import AssignmentController from "../../controllers/assignments/assignment.contr
 import AssignmentService from "../../services/assignments/assignment.service.js";
 import Assignment from "../../models/assignments/Assignment.js";
 import auth from "../../middlewares/auth.middleware.js";
+import validate from "../../middlewares/validate.middleware.js";
+import { assignmentSchema } from "../../validation/assignments/assignment.validation.js";
 import multer from "../../middlewares/multer.middleware.js";
 import isEnrolled from "../../middlewares/isEnrolled.middleware.js";
 
@@ -19,7 +21,7 @@ const assignmentController = new AssignmentController();
 router.use(authenticate);
 
 // Create a new assignment
-router.post("/",authorize("teacher"), upload, assignmentController.createAssignment);
+router.post("/",authorize("teacher"), upload, validate(assignmentSchema), assignmentController.createAssignment);
 
 // Get all assignments by group
 router.get("/group/:groupId",isEnrolled(), assignmentController.getAssignmentsByGroup);

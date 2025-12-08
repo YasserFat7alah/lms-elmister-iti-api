@@ -6,6 +6,7 @@ import errorHandler from "./middlewares/error.middleware.js";
 import passport from "./config/passport/index.js";
 import AppError from "./utils/app.error.js";
 import { CLIENT_URL } from "./utils/constants.js";
+// Routes imports
 import { authRouter } from "./routes/auth.routes.js";
 import {courseRouter} from "./routes/course.routes.js";
 import { groupRouter } from "./routes/group.routes.js";
@@ -18,6 +19,8 @@ import { payoutRouter } from "./routes/payout.routes.js";
 import { webhookRouter } from "./routes/webhook.routes.js";
 import { testimonialRouter } from "./routes/testimonial.routes.js";
 import { notificationRouter } from "./routes/notification.routes.js";
+import { submissionRouter } from "./routes/assignments/submission.routes.js";
+import { assignmentRouter } from "./routes/assignments/assignment.routes.js";
 
 
 const app = express();
@@ -52,6 +55,8 @@ app.use("/api/v1/enrollments", enrollmentRouter);
 app.use("/api/v1/payouts", payoutRouter);
 app.use("/api/v1/testimonials", testimonialRouter);
 app.use("/api/v1/notifications", notificationRouter);
+app.use("/api/v1/assignments", assignmentRouter);
+app.use("/api/v1/submissions", submissionRouter);
 
 
 

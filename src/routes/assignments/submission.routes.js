@@ -5,6 +5,8 @@ import AssignmentService from "../../services/assignments/assignment.service.js"
 import Submission from "../../models/assignments/Submission.js";
 import Assignment from "../../models/assignments/Assignment.js";
 import auth from "../../middlewares/auth.middleware.js";
+import validate from "../../middlewares/validate.middleware.js";
+import { gradeSchema, submissionSchema } from "../../validation/assignments/submission.validation.js";
 import multer from "../../middlewares/multer.middleware.js";
 import isEnrolled from "../../middlewares/isEnrolled.middleware.js";
 
@@ -22,8 +24,8 @@ const submissionController = new SubmissionController({ submissionService, assig
 router.use(authenticate);
 // ...................................Student & Parent Routes.......................................
 
-// Submit an assignment 
-router.post("/", authorize("student"), isEnrolled(), upload, submissionController.submitAssignment);
+// Submit an assignment (submission)
+router.post("/", authorize("student"), isEnrolled(), upload,validate(submissionSchema), submissionController.submitAssignment);
 
 // Get all submissions for an assignment (student "owner", parent "Children")
 router.get( "/:assignmentId", authorize("student", "parent"),submissionController.getSubmissionsByAssignment);
@@ -31,7 +33,7 @@ router.get( "/:assignmentId", authorize("student", "parent"),submissionControlle
 //..........................................Teacher Routes.........................................
 
 // Grade a submission (teacher only)
-router.patch("/:submissionId/grade", authorize("teacher"), submissionController.gradeSubmission);
+router.patch("/:submissionId/grade", authorize("teacher"), validate(gradeSchema), submissionController.gradeSubmission);
 
 // Get all submissions for an assignment (teacher only)
 router.get("/:assignmentId/all", authorize("teacher"), submissionController.getSubmissionsForTeacher);
