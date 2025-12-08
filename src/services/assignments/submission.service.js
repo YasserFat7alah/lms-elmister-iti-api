@@ -12,15 +12,23 @@ class SubmissionService extends BaseService {
         const existing = await this.model.findOne({ assignment: assignmentId, student: studentId });
         if (existing) throw AppError.badRequest("Already submitted");
 
-        let uploadResult;
+        let uploadResult = null;
 
         if (file) {
             uploadResult = await cloudinaryService.upload(file, `courses/submissions/${assignmentId}`);
         }
 
         const submitted = await this.model
-            .create({ assignment: assignmentId, student: studentId, content, file })
-            .populate("student", "name email");
+            .create({
+                assignment: assignmentId, 
+                student: studentId, 
+                content,
+                file: uploadResult ? {
+                    url:uploadResult.url,
+                    publicId: uploadResult.publicId,
+                    type: "raw"
+                } : null
+            });
 
         return submitted;
     }

@@ -53,12 +53,17 @@ class AssignmentService extends BaseService {
             throw AppError.badRequest("Assignment must belong to a group or a lesson");
         }
 
-        let uploadResult;
+        let uploadResult = null;
         if (file) {
             uploadResult = await cloudinaryService.upload(file, `courses/${group || lesson || course}/assignments`);
         }
         const assignment = await this.model.create({
-            title, description, group, lesson, course, teacher, totalGrade, dueDate, file: uploadResult
+            title, description, group, lesson, course, teacher, totalGrade, dueDate,
+            file: uploadResult ? {
+                url: uploadResult.url,
+                publicId: uploadResult.publicId,
+                type: "raw"
+            } : null
         });
 
         return assignment;

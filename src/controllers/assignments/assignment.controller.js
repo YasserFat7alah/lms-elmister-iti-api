@@ -9,7 +9,7 @@ class AssignmentController {
      * Create a new assignment >>> Only teacher can create
      * @route POST api/v1/assignments
      * @auth teacher
-     * @body { title, description, group, lesson, course, totalGrade, dueDate, file }
+     * @body { title, description, group, lesson, totalGrade, dueDate, file }
     */
     createAssignment = asyncHandler(async (req, res) => {
 

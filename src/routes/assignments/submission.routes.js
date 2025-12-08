@@ -25,10 +25,10 @@ router.use(authenticate);
 // ...................................Student & Parent Routes.......................................
 
 // Submit an assignment (submission)
-router.post("/", authorize("student"), isEnrolled(), upload,validate(submissionSchema), submissionController.submitAssignment);
+router.post("/:assignmentId", authorize("student"), isEnrolled(), upload,validate(submissionSchema), submissionController.submitAssignment);
 
-// Get all submissions for an assignment (student "owner", parent "Children")
-router.get( "/:assignmentId", authorize("student", "parent"),submissionController.getSubmissionsByAssignment);
+// Get his own submission for an assignment (student "owner", parent "Children")
+router.get( "/:assignmentId", authorize("student", "parent") , isEnrolled(),submissionController.getSubmissionsByAssignment);
 
 //..........................................Teacher Routes.........................................
 

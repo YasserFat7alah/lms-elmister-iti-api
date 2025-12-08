@@ -12,13 +12,15 @@ class SubmissionController {
      * Student submits an assignment
      * @route POST api/v1/submissions
      * @auth student
-     * @body assignmentId, content, file
+     * @params assignmentId
+     * @body content, file
      * */
     submitAssignment = asyncHandler(async (req, res) => {
 
         const studentId = req.user._id;
         const file = req.file ? req.file : null;
-        const { assignmentId, content } = req.body;
+        const { content } = req.body;
+        const assignmentId = req.params.assignmentId;
 
         // Validate if assignment exists
         const assignment = await this.assignmentService.getAssignmentById(assignmentId);

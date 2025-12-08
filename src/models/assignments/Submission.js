@@ -16,7 +16,12 @@ const SubmissionSchema = new Schema(
         },
 
         content: { type: String },
-        file: { type: String },
+        file: {
+            url: { type: String },
+            publicId: { type: String },
+            type: { type: String, default: "raw" }
+        },
+        
         grade: { type: Number },
         feedback: { type: String },
 
