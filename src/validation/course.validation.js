@@ -4,7 +4,7 @@ const gradeLevels = [
   "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"
 ];
 
-const statusValues = ["draft", "published", "archived"];
+const statusValues = ["draft", "in-review", "published", "archived"];
 
 // Validation for creating a course
 export const createCourseSchema = Joi.object({
@@ -40,7 +40,7 @@ export const createCourseSchema = Joi.object({
 
   status: Joi.string().valid(...statusValues).optional(),
 
-  language: Joi.string().optional().default("English"),
+  courseLanguage: Joi.string().optional().default("English"),
 
   tags: Joi.array().items(Joi.string().trim()).optional(),
 
@@ -76,7 +76,7 @@ export const updateCourseSchema = Joi.object({
 
   status: Joi.string().valid(...statusValues).optional(),
 
-  language: Joi.string().optional(),
+  courseLanguage: Joi.string().optional(),
 
   tags: Joi.array().items(Joi.string().trim()).optional(),
 

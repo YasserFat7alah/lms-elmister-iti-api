@@ -69,6 +69,7 @@ class EnrollmentService extends BaseService {
     let enrollment = await Enrollment.findOne({
       student: studentId,
       course: group.courseId._id,
+      group: groupId,
     });
     if (enrollment && enrollment.status === "active") {
       throw AppError.conflict(

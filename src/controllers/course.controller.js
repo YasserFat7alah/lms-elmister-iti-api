@@ -31,8 +31,8 @@ class CourseController {
      * */
     _filterBody(role, body) {
         const allowedFields = {
-            admin: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'status', 'language', 'tags', 'teacherId', 'price', 'isFree'], // Admin can edit all
-            teacher: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'language', 'tags'], // Teacher cannot edit teacherId, status (directly), or stats
+            admin: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'status', 'courseLanguage', 'tags', 'teacherId', 'price', 'isFree'], // Admin can edit all
+            teacher: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'courseLanguage', 'tags'], // Teacher cannot edit teacherId, status (directly), or stats
             parent: [], // Parents cannot create/edit courses
             student: [] // Students cannot create/edit courses
         };

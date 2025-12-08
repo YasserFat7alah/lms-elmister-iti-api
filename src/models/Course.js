@@ -50,11 +50,11 @@ const CourseSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "published", "archived"],
+      enum: ["draft","in-review", "published", "archived"],
       default: "draft",
     },
 
-    language: {
+    courseLanguage: {
       type: String,
       default: "English",
       lowercase: true,

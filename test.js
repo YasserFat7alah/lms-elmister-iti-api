@@ -1,300 +1,185 @@
-const subscription = {
-  id: 'sub_1SbT63AdUZIYKVvaCCn7Ksuv',
-  object: 'subscription',
-  application: null,
-  application_fee_percent: null,
-  automatic_tax: { disabled_reason: null, enabled: false, liability: null },
-  billing_cycle_anchor: 1765056772,
-  billing_cycle_anchor_config: null,
-  billing_mode: {
-    flexible: { proration_discounts: 'included' },
-    type: 'flexible',
-    updated_at: 1765056756
-  },
-  billing_thresholds: null,
-  cancel_at: null,
-  cancel_at_period_end: false,
-  canceled_at: null,
-  cancellation_details: { comment: null, feedback: null, reason: null },
-  collection_method: 'charge_automatically',
-  created: 1765056772,
-  currency: 'usd',
-  customer: 'cus_TXnY76syk4EEGi',
-  customer_account: null,
-  days_until_due: null,
-  default_payment_method: 'pm_1SbT5zAdUZIYKVvaONNy0Mk5',
-  default_source: null,
-  default_tax_rates: [],
-  description: null,
-  discounts: [],
-  ended_at: null,
-  invoice_settings: { account_tax_ids: null, issuer: { type: 'self' } },
-  items: {
-    object: 'list',
-    data: [ [Object] ],
-    has_more: false,
-    total_count: 1,
-    url: '/v1/subscription_items?subscription=sub_1SbT63AdUZIYKVvaCCn7Ksuv'
-  },
-  latest_invoice: {
-    id: 'in_1SbT60AdUZIYKVvaruxm1lzv',
-    object: 'invoice',
-    account_country: 'US',
-    account_name: 'Elmister sandbox',
-    account_tax_ids: null,
-    amount_due: 15000,
-    amount_overpaid: 0,
-    amount_paid: 15000,
-    amount_remaining: 0,
-    amount_shipping: 0,
-    application: null,
-    attempt_count: 0,
-    attempted: true,
-    auto_advance: false,
-    automatic_tax: {
-      disabled_reason: null,
-      enabled: false,
-      liability: null,
-      provider: null,
-      status: null
-    },
-    automatically_finalizes_at: null,
-    billing_reason: 'subscription_create',
-    collection_method: 'charge_automatically',
-    created: 1765056772,
-    currency: 'usd',
-    custom_fields: null,
-    customer: 'cus_TXnY76syk4EEGi',
-    customer_account: null,
-    customer_address: null,
-    customer_email: 'yass@parent.com',
-    customer_name: 'Yasser Fathallah',
-    customer_phone: null,
-    customer_shipping: null,
-    customer_tax_exempt: 'none',
-    customer_tax_ids: [],
-    default_payment_method: null,
-    default_source: null,
-    default_tax_rates: [],
-    description: null,
-    discounts: [],
-    due_date: null,
-    effective_at: 1765056772,
-    ending_balance: 0,
-    footer: null,
-    from_invoice: null,
-    hosted_invoice_url: 'https://invoice.stripe.com/i/acct_1Sadj3AdUZIYKVva/test_YWNjdF8xU2FkajNBZFVaSVlLVnZhLF9UWWFHRXNqTHE4VnU2Y2EzRGdOdHNzNVlNTjloaG5XLDE1NTU5NzU3Nw0200vh1JIROK?s=ap',
-    invoice_pdf: 'https://pay.stripe.com/invoice/acct_1Sadj3AdUZIYKVva/test_YWNjdF8xU2FkajNBZFVaSVlLVnZhLF9UWWFHRXNqTHE4VnU2Y2EzRGdOdHNzNVlNTjloaG5XLDE1NTU5NzU3Nw0200vh1JIROK/pdf?s=ap',
-    issuer: { type: 'self' },
-    last_finalization_error: null,
-    latest_revision: null,
-    lines: {
-      object: 'list',
-      data: [Array],
-      has_more: false,
-      total_count: 1,
-      url: '/v1/invoices/in_1SbT60AdUZIYKVvaruxm1lzv/lines'
-    },
-    livemode: false,
-    metadata: {},
-    next_payment_attempt: null,
-    number: 'FSG9IABR-0032',
-    on_behalf_of: null,
-    parent: {
-      quote_details: null,
-      subscription_details: [Object],
-      type: 'subscription_details'
-    },
-    payment_settings: {
-      default_mandate: null,
-      payment_method_options: [Object],
-      payment_method_types: [Array]
-    },
-    period_end: 1765056772,
-    period_start: 1765056772,
-    post_payment_credit_notes_amount: 0,
-    pre_payment_credit_notes_amount: 0,
-    receipt_number: null,
-    rendering: null,
-    shipping_cost: null,
-    shipping_details: null,
-    starting_balance: 0,
-    statement_descriptor: null,
-    status: 'paid',
-    status_transitions: {
-      finalized_at: 1765056772,
-      marked_uncollectible_at: null,
-      paid_at: 1765056773,
-      voided_at: null
-    },
-    subtotal: 15000,
-    subtotal_excluding_tax: 15000,
-    test_clock: null,
-    total: 15000,
-    total_discount_amounts: [],
-    total_excluding_tax: 15000,
-    total_pretax_credit_amounts: [],
-    total_taxes: [],
-    webhooks_delivered_at: 1765056777
-  },
-  livemode: false,
-  metadata: {},
-  next_pending_invoice_item_invoice: null,
-  on_behalf_of: null,
-  pause_collection: null,
-  payment_settings: {
-    payment_method_options: {
-      acss_debit: null,
-      bancontact: null,
-      card: [Object],
-      customer_balance: null,
-      konbini: null,
-      sepa_debit: null,
-      us_bank_account: null
-    },
-    payment_method_types: [ 'card' ],
-    save_default_payment_method: 'off'
-  },
-  pending_invoice_item_interval: null,
-  pending_setup_intent: null,
-  pending_update: null,
-  plan: {
-    id: 'price_1Sahx2AdUZIYKVvaqItTXLyn',
-    object: 'plan',
-    active: true,
-    amount: 15000,
-    amount_decimal: '15000',
-    billing_scheme: 'per_unit',
-    created: 1764875548,
-    currency: 'usd',
-    interval: 'month',
-    interval_count: 1,
-    livemode: false,
-    metadata: {},
-    meter: null,
-    nickname: null,
-    product: 'prod_TXnAXbDkhaNt4J',
-    tiers_mode: null,
-    transform_usage: null,
-    trial_period_days: null,
-    usage_type: 'licensed'
-  },
-  quantity: 1,
-  schedule: null,
-  start_date: 1765056772,
-  status: 'active',
-  test_clock: null,
-  transfer_data: null,
-  trial_end: null,
-  trial_settings: { end_behavior: { missing_payment_method: 'create_invoice' } },
-  trial_start: null
+import asyncHandler from "express-async-handler";
+import AppError from "../utils/app.error.js";
+
+// Services
+import EnrollmentService from "../services/enrollment.service.js";
+import Enrollment from "../models/Enrollment.js"; // Needed for Dependency Injection
+
+class CourseController {
+    
+    constructor(courseService) {
+        this.courseService = courseService;
+        // بنعمل نسخة من EnrollmentService وبنبعت له ال Model بتاعه
+        this.enrollmentService = new EnrollmentService(Enrollment);
+    }
+
+    // --- Helper: Permission & Field Sanitization ---
+    _filterBody(role, body) {
+        const allowedFields = {
+            admin: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'status', 'courseLanguage', 'tags', 'teacherId', 'price', 'isFree'], 
+            teacher: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'courseLanguage', 'tags'], 
+            parent: [],
+            student: [] 
+        };
+
+        const allowed = allowedFields[role] || [];
+        const filtered = {};
+        
+        Object.keys(body).forEach(key => {
+            if (allowed.includes(key)) filtered[key] = body[key];
+        });
+
+        return filtered;
+    }
+
+    /**
+     * Create a new Course
+     */
+    createCourse = asyncHandler(async (req, res, next) => {
+        const { role } = req.user;
+        
+        if (!['admin', 'teacher'].includes(role)) {
+            throw AppError.forbidden("Only teachers and admins can create courses");
+        }
+
+        const payload = this._filterBody(role, req.body);
+        const file = req.file || null;
+
+        // Context Injection
+        if (role === 'teacher') {
+            payload.teacherId = req.user._id;
+            // Teacher's course is always draft initially
+        } else if (role === 'admin') {
+            if (!req.body.teacherId) throw AppError.badRequest("Admin must specify a teacherId");
+            payload.teacherId = req.body.teacherId; 
+        }
+
+        const newCourse = await this.courseService.createCourse(payload, file, role);
+
+        res.status(201).json({
+            success: true,
+            message: "Course created successfully",
+            data: newCourse
+        });
+    });
+
+    /**
+     * Get All Courses (Uses EnrollmentService for Students)
+     */
+    getAllCourses = asyncHandler(async (req, res, next) => {
+        const { page, limit, ...filters } = req.query;
+        // User might be undefined if route is public, assuming auth middleware handles this or sets req.user
+        const user = req.user || {}; 
+        
+        const queryOptions = { page, limit };
+        const serviceFilters = { ...filters }; // Copy filters from query
+
+        // --- Role Based Logic ---
+        
+        // 1. Student: See ONLY subscribed courses
+        if (user.role === 'student') {
+            // استخدمنا السيرفيس هنا عشان نجيب الكورسات النشطة
+            const activeEnrollments = await this.enrollmentService.listByStudent(user._id);
+            
+            // EnrollmentService returns docs with 'course' field populated or as ID
+            // We map to get an array of Course IDs
+            const subscribedCourseIds = activeEnrollments.map(enrollment => enrollment.course);
+            
+            serviceFilters._id = { $in: subscribedCourseIds };
+            serviceFilters.status = 'published'; // Extra safety
+        } 
+        
+        // 2. Teacher: See ONLY their own courses (Drafts included)
+        else if (user.role === 'teacher') {
+            serviceFilters.teacherId = user._id; 
+        }
+        
+        // 3. Admin: See ALL (No forced filters)
+        else if (user.role === 'admin') {
+            // Admin sees everything, filters come purely from req.query
+        }
+        
+        // 4. Public / Parent: See ONLY Published
+        else {
+            serviceFilters.status = 'published';
+            // Optional: You might want to ensure only courses with active groups are shown here
+            // serviceFilters.groups = { $not: { $size: 0 } }; 
+        }
+
+        const result = await this.courseService.getCourses(serviceFilters, queryOptions);
+
+        res.status(200).json({
+            success: true,
+            ...result
+        });
+    });
+
+    /**
+     * Get Course By ID
+     */
+    getCourseById = asyncHandler(async (req, res, next) => {
+        const course = await this.courseService.getCourseById(req.params.id);
+        
+        // Optional: Privacy Check
+        // لو الطالب حاول يفتح كورس مش مشترك فيه عن طريق الـ ID المباشر
+        // لو البيزنس بتاعك بيمنع ده، ممكن تزود تشيك هنا باستخدام enrollmentService برضو
+        
+        res.status(200).json({
+            success: true,
+            data: course
+        });
+    });
+
+    /**
+     * Update Course
+     */
+    updateCourseById = asyncHandler(async (req, res, next) => {
+        const { id } = req.params;
+        const { role, _id: userId } = req.user;
+        const requestedStatus = req.body.status;
+        const file = req.file || null;
+
+        const payload = this._filterBody(role, req.body);
+
+        // Prepare context for the Service to decide logic
+        let actionContext = { userId, role, isPublishRequest: false };
+
+        if (role === 'teacher') {
+            // Check if teacher is requesting a status change (Publish/Review)
+            if (requestedStatus === 'published' || requestedStatus === 'in-review') {
+                actionContext.isPublishRequest = true;
+                actionContext.requestedStatus = requestedStatus;
+            }
+        } else if (role === 'admin') {
+            // Admin commands override everything
+            if (requestedStatus) payload.status = requestedStatus;
+        }
+
+        const updatedCourse = await this.courseService.updateCourseById(id, payload, file, actionContext);
+
+        res.status(200).json({
+            success: true,
+            data: updatedCourse
+        });
+    });
+
+    /**
+     * Delete Course
+     */
+    deleteCourseById = asyncHandler(async (req, res, next) => {
+        const { id } = req.params;
+        const { role, _id: userId } = req.user;
+
+        // Admin = Hard Delete, Teacher = Soft Delete (Archive)
+        const isHardDelete = role === 'admin';
+
+        await this.courseService.deleteCourseById(id, userId, role, isHardDelete);
+
+        res.status(200).json({
+            success: true,
+            message: isHardDelete ? "Course permanently deleted" : "Course archived successfully"
+        });
+    });
 }
-const invoice = {
-  id: 'in_1Sb97aAdUZIYKVvazuWQccTB',
-  object: 'invoice',
-  account_country: 'US',
-  account_name: 'Elmister sandbox',
-  account_tax_ids: null,
-  amount_due: 15000,
-  amount_overpaid: 0,
-  amount_paid: 15000,
-  amount_remaining: 0,
-  amount_shipping: 0,
-  application: null,
-  attempt_count: 0,
-  attempted: true,
-  auto_advance: false,
-  automatic_tax: {
-    disabled_reason: null,
-    enabled: false,
-    liability: null,
-    provider: null,
-    status: null
-  },
-  automatically_finalizes_at: null,
-  billing_reason: 'subscription_create',
-  collection_method: 'charge_automatically',
-  created: 1764979990,
-  currency: 'usd',
-  custom_fields: null,
-  customer: 'cus_TXnY76syk4EEGi',
-  customer_account: null,
-  customer_address: null,
-  customer_email: 'yass@parent.com',
-  customer_name: 'Yasser Fathallah',
-  customer_phone: null,
-  customer_shipping: null,
-  customer_tax_exempt: 'none',
-  customer_tax_ids: [],
-  default_payment_method: null,
-  default_source: null,
-  default_tax_rates: [],
-  description: null,
-  discounts: [],
-  due_date: null,
-  effective_at: 1764979990,
-  ending_balance: 0,
-  footer: null,
-  from_invoice: null,
-  hosted_invoice_url: 'https://invoice.stripe.com/i/acct_1Sadj3AdUZIYKVva/test_YWNjdF8xU2FkajNBZFVaSVlLVnZhLF9UWUZjZjBQajNkUXUwbnBlcUFPWmwzZXlIRHhjek1iLDE1NTUyMDc5Mw02007fYZXThT?s=ap',
-  invoice_pdf: 'https://pay.stripe.com/invoice/acct_1Sadj3AdUZIYKVva/test_YWNjdF8xU2FkajNBZFVaSVlLVnZhLF9UWUZjZjBQajNkUXUwbnBlcUFPWmwzZXlIRHhjek1iLDE1NTUyMDc5Mw02007fYZXThT/pdf?s=ap',
-  issuer: { type: 'self' },
-  last_finalization_error: null,
-  latest_revision: null,
-  lines: {
-    object: 'list',
-    data: [ [Object] ],
-    has_more: false,
-    total_count: 1,
-    url: '/v1/invoices/in_1Sb97aAdUZIYKVvazuWQccTB/lines'
-  },
-  livemode: false,
-  metadata: {},
-  next_payment_attempt: null,
-  number: 'FSG9IABR-0014',
-  on_behalf_of: null,
-  parent: {
-    quote_details: null,
-    subscription_details: { metadata: {}, subscription: 'sub_1Sb97bAdUZIYKVvaJMvT0LZk' },
-    type: 'subscription_details'
-  },
-  payment_settings: {
-    default_mandate: null,
-    payment_method_options: {
-      acss_debit: null,
-      bancontact: null,
-      card: [Object],
-      customer_balance: null,
-      konbini: null,
-      sepa_debit: null,
-      us_bank_account: null
-    },
-    payment_method_types: [ 'card' ]
-  },
-  period_end: 1764979990,
-  period_start: 1764979990,
-  post_payment_credit_notes_amount: 0,
-  pre_payment_credit_notes_amount: 0,
-  receipt_number: null,
-  rendering: null,
-  shipping_cost: null,
-  shipping_details: null,
-  starting_balance: 0,
-  statement_descriptor: null,
-  status: 'paid',
-  status_transitions: {
-    finalized_at: 1764979990,
-    marked_uncollectible_at: null,
-    paid_at: 1764979990,
-    voided_at: null
-  },
-  subtotal: 15000,
-  subtotal_excluding_tax: 15000,
-  test_clock: null,
-  total: 15000,
-  total_discount_amounts: [],
-  total_excluding_tax: 15000,
-  total_pretax_credit_amounts: [],
-  total_taxes: [],
-  webhooks_delivered_at: null
-}
+
+export default CourseController;
