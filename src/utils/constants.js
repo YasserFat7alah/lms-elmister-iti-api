@@ -31,15 +31,21 @@ export const CLOUDINARY_URL = process.env.CLOUDINARY_URL;
 // ===> Nodemailer Configuration
 export const SMTP_USER = process.env.SMTP_USER;
 export const SMTP_PASS = process.env.SMTP_PASS;
+const IS_GMAIL = (process.env.SMTP_SERVICE || 'gmail').toLowerCase() === 'gmail';
 export const NODEMAILER_CONFIG = {
-    service: process.env.SMTP_SERVICE || 'gmail',
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: false, // true for 465, false for other ports
     auth: {
         user: SMTP_USER,
         pass: SMTP_PASS,
     },
+    ...(IS_GMAIL ? {
+            service: 'gmail'
+        } 
+        : {
+            host: process.env.SMTP_HOST || 'smtp.example.com',
+            port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
+            secure: process.env.SMTP_PORT == 465,
+        }
+    )
 };
 
 export const SENDER_EMAIL = process.env.SENDER_EMAIL || SMTP_USER || '';
