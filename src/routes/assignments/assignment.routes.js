@@ -29,7 +29,7 @@ router.get("/group/:groupId",isEnrolled(), assignmentController.getAssignmentsBy
 // Get all assignments by lesson
 router.get("/lesson/:lessonId",isEnrolled(), assignmentController.getAssignmentsByLesson);
 
-// Get assignment by ID
+// Get assignment by ID (teacher, student, parent of enrolled child)
 router.get("/:assignmentId", isEnrolled(), assignmentController.getAssignmentById);
 
 export { router as assignmentRouter };

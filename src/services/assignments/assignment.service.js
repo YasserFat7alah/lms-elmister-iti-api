@@ -86,7 +86,11 @@ class AssignmentService extends BaseService {
 
     async getAssignmentById(id) {
 
-        const assignment = await this.model.findById(id).populate("teacher group lesson course");
+        const assignment = await this.model.findById(id)
+            .populate("group", "title")
+            .populate("course", "title")
+            .populate("teacher", "name email")
+
         if (!assignment) throw AppError.notFound("Assignment not found");
 
         return assignment;

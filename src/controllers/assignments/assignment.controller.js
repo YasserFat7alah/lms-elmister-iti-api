@@ -70,9 +70,9 @@ class AssignmentController {
     */
     getAssignmentById = asyncHandler(async (req, res) => {
 
-            const { id } = req.params;
+            const {assignmentId} = req.params;
 
-            const assignment = await this.assignmentService.getAssignmentById(id);
+            const assignment = await this.assignmentService.getAssignmentById(assignmentId);
 
             res.status(200).json({
                 success: true,
