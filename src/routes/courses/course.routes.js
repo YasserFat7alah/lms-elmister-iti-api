@@ -1,9 +1,11 @@
 import express from "express";
-import multerMiddleware from "../middlewares/multer.middleware.js";
-import auth from "../middlewares/auth.middleware.js";
-import validate from "../middlewares/validate.middleware.js";
-import { createCourseSchema, updateCourseSchema } from "../validation/course.validation.js";
-import courseController from "../controllers/course.controller.js";
+import courseController from "../../controllers/course.controller.js";
+import multerMiddleware from "../../middlewares/multer.middleware.js";
+import auth from "../../middlewares/auth.middleware.js";
+import validate from "../../middlewares/validate.middleware.js";
+import { createCourseSchema, updateCourseSchema } from '../../validation/course.validation.js';
+
+
 
 const router = express.Router();
 

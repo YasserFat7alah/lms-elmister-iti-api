@@ -1,6 +1,8 @@
 import express from "express";
-import enrollmentController from "../controllers/enrollment.controller.js";
-import authMiddleware from "../middlewares/auth.middleware.js";
+import authMiddleware from "../../middlewares/auth.middleware.js";
+import validate from "../../middlewares/validate.middleware.js";
+import { enrollSchema } from './../../validation/enrollment.validation.js';
+import enrollmentController from "../../controllers/enrollment.controller.js";
 
 const router = express.Router();
 
@@ -8,8 +10,6 @@ const { authenticate, authorize } = authMiddleware;
 
 router.use(authenticate);
 
-import validate from "../middlewares/validate.middleware.js";
-import { enrollSchema } from "../validation/enrollment.validation.js";
 
 router.post("/checkout/:groupId", authorize("parent"), validate(enrollSchema),
   enrollmentController.enroll

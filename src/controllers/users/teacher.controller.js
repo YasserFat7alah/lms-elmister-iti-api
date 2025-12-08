@@ -8,6 +8,15 @@ class TeacherController {
         this.service = service;
     }
 
+    getDashboard = asyncHandler(async (req, res) => {
+        const dashboard = await this.service.getDashboard(req.user._id);
+
+        res.status(200).json({
+            success: true,
+            data: dashboard
+        });
+    });
+
     /** upload introduction Video 
      * @route PATCH /api/v1/teachers/me/video
      * @access Private Teacher
