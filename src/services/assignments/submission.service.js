@@ -1,6 +1,6 @@
 import BaseService from "../base.service.js";
 import AppError from "../../utils/app.error.js";
-import cloudinaryService from "../cloudinary.service.js";
+import cloudinaryService from "../helpers/cloudinary.service.js";
 
 
 class SubmissionService extends BaseService {

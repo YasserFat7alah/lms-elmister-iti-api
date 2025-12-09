@@ -1,7 +1,7 @@
 import BaseService from "./base.service.js";
 import Lesson from "../models/Lesson.js";
 import AppError from "../utils/app.error.js";
-import cloudinaryService from "./cloudinary.service.js";
+import cloudinaryService from "./helpers/cloudinary.service.js";
 import { emitNotification } from "../config/socket/index.js";
 import notificationService from "./notification.service.js";
 

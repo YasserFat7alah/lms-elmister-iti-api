@@ -14,6 +14,7 @@ import { testimonialRouter } from "./testimonial.routes.js";
 import { assignmentRouter } from "./assignments/assignment.routes.js";
 import { submissionRouter } from "./assignments/submission.routes.js";
 import { notificationRouter } from "./notification.routes.js";
+import { cloudinaryRouter } from "./helpers/cloudinary.routes.js";
 
 
 
@@ -40,6 +41,9 @@ router.use("/notifications", notificationRouter);
 router.use("/assignments", assignmentRouter);
 router.use("/submissions", submissionRouter);
 
+
+/* --- --- --- HELPERS ENDPOINTS --- --- --- */
+router.use("/cloudinary", cloudinaryRouter);
 
 
 export default router;

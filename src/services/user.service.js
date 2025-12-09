@@ -1,7 +1,7 @@
 import User from "../models/users/User.js";
 import AppError from "../utils/app.error.js";
 import BaseService from "./base.service.js";
-import cloudinaryService from "./cloudinary.service.js";
+import cloudinaryService from "./helpers/cloudinary.service.js";
 
 class UserService extends BaseService {
   constructor(model) {
