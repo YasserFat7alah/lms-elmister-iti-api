@@ -112,7 +112,7 @@ class AuthController {
         }
         const user = await this.authService.findOne({ email }, '+password');
         
-        const { otp, otpExpiry } = this.authService.generateOTP(5);
+        const { otp, otpExpiry } = this.authService.generateOTP(15);
 
         await this.authService.updateById(user._id, { otp, otpExpiry });
         
@@ -155,6 +155,8 @@ class AuthController {
         const { accessToken, refreshToken: newRefreshToken, user } = await this.authService.refreshTokens(oldRefreshToken);
 
         this.authService.setRefreshCookie(res, newRefreshToken);
+
+this.authService.setAccessCookie(res, accessToken);
         res.status(200).json({
             success: true,
             message: 'Token refreshed successfully',
@@ -303,6 +305,30 @@ class AuthController {
     await this.mailService.initiateAccountVerfication(email, verificationLink);
 
     res.status(200).json({ success:true, message: 'Verification email sent' });
+    });
+
+    /** Test mail speed (debug only)
+     * @route POST /api/v1/auth/test-mail-speed
+     * @access Public
+     */
+    testMailSpeed = asyncHandler(async (req, res) => {
+        const { email } = req.body;
+        if (!email) throw AppError.badRequest('Email is required for test');
+
+        const start = Date.now();
+        const result = await this.mailService.sendEmail(
+            email, 
+            "Speed Test", 
+            "<p>Speed test</p>"
+        );
+        const duration = Date.now() - start;
+
+        res.status(200).json({
+            success: true,
+            duration: `${duration}ms`,
+            messageId: result.info.messageId,
+            note: "If this response was fast (<5s) but email arrives late, the issue is with Gmail/Provider delivery queue."
+        });
     });  
 
 }

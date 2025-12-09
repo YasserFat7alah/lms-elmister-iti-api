@@ -33,10 +33,6 @@ export const SMTP_USER = process.env.SMTP_USER;
 export const SMTP_PASS = process.env.SMTP_PASS;
 const IS_GMAIL = (process.env.SMTP_SERVICE || 'gmail').toLowerCase() === 'gmail';
 export const NODEMAILER_CONFIG = {
-    auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-    },
     ...(IS_GMAIL ? {
             service: 'gmail'
         } 
@@ -45,7 +41,11 @@ export const NODEMAILER_CONFIG = {
             port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
             secure: process.env.SMTP_PORT == 465,
         }
-    )
+    ),
+    auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+    },
 };
 
 export const SENDER_EMAIL = process.env.SENDER_EMAIL || SMTP_USER || '';

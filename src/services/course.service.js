@@ -1,6 +1,6 @@
 import Course from "../models/Course.js";
 import BaseService from "./base.service.js";
-import cloudinaryService from "./cloudinary.service.js";
+import cloudinaryService from "./helpers/cloudinary.service.js";
 import AppError from "../utils/app.error.js";
 import Group from "../models/Group.js";
 
@@ -15,18 +15,10 @@ class CourseService extends BaseService {
      * @param {Object} thumbnailFile - The thumbnail file to upload.
      * @returns {Object} The newly created course.
      */
-    async createCourse(payload, thumbnailFile) {
-        let thumbnail = null;
-
-        if (thumbnailFile) { // If there's a thumbnail to upload
-            const uploadResult = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/", { resource_type: "image" });
-            thumbnail = { ...uploadResult };
-        }
-
-        const newCourse = await super.create({ ...payload, thumbnail });
+    async createCourse(payload) {
+        const newCourse = await super.create(payload);
         return newCourse;
     }
-
 
     /** Retrieve courses by given filters and options.
      * @param {Object} filters - Filter objects.
@@ -41,9 +33,9 @@ class CourseService extends BaseService {
             const priceQuery = {};
             if (minPrice) priceQuery.price = { $gte: Number(minPrice) };
             if (maxPrice) priceQuery.price = { ...priceQuery.price, $lte: Number(maxPrice) };
-            
+
             const eligibleGroups = await Group.find(priceQuery).distinct('courseId');
-            
+
             if (filters._id) {
                 filters.$and = [{ _id: filters._id }, { _id: { $in: eligibleGroups } }];
                 delete filters._id;
@@ -72,7 +64,7 @@ class CourseService extends BaseService {
 
             courses.forEach(course => {
                 const priceInfo = pricingMap[course._id.toString()];
-                course.minCost = priceInfo ? priceInfo.minCost : 0; 
+                course.minCost = priceInfo ? priceInfo.minCost : 0;
                 course.currency = priceInfo ? priceInfo.currency : 'usd';
             });
         }
@@ -112,44 +104,38 @@ class CourseService extends BaseService {
      * @returns {Object} The updated course
      * @throws {Forbidden} You can only update your own courses
      */
-    async updateCourseById(_id, data, thumbnailFile, context) {
-        const { userId, userRole, isPublishRequest, requestedStatus } = context;
+    async updateCourseById(_id, data, context) {
+        const { userId, userRole } = context;
 
-        // Existance check
+        // 1. Existance check
         const course = await super.findById(_id);
         if (!course) throw AppError.notFound("Course not found");
 
-        // Ownership check
-        if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) { 
-            throw AppError.forbidden("You can only update your own courses");}
-        
-        // Thumbnail update
-        let thumbnail = course.thumbnail;
-        if (thumbnailFile) {
-            const uploaded = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/");
-
-            if (thumbnail?.publicId && uploaded.publicId) 
-                await cloudinaryService.delete(thumbnail.publicId, thumbnail.type);
-
-            if(uploaded.publicId) thumbnail = { ...uploaded };
+        // 2. Ownership check
+        if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) {
+            throw AppError.forbidden("You can only update your own courses");
         }
 
-        let updates = { ...data, thumbnail };
-
-        // Teacher Logic
-        if (userRole === 'teacher') {
-            if (isPublishRequest && requestedStatus === 'in-review') {
-                if (!course.groups || course.groups.length === 0) {
-                    throw AppError.badRequest("Cannot request publish without at least one group.");
-                }
-                updates.status = 'in-review';
+        if (data.thumbnail?.publicId && course.thumbnail?.publicId) {
+            if (data.thumbnail?.publicId !== course.thumbnail.publicId) {
+                await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type || 'image');
             }
-
-            if (course.status === 'published' && !isPublishRequest) updates.status = 'in-review';
         }
 
-        return await super.updateById(_id, updates);
+        if (data.video?.publicId && course.video?.publicId) {
+            if (data.video?.publicId !== course.video.publicId) {
+                await cloudinaryService.delete(course.video.publicId, course.video.type || 'video');
+            }
+        }
+
+        const updatedCourse = await Course.findByIdAndUpdate(_id, data, {
+            new: true,
+            runValidators: true
+        });
+        return updatedCourse;
     }
+
+
 
     /** Delete course and its associated thumbnail from Cloudinary
      * @param {string} _id - The ID of the course to delete
@@ -171,12 +157,15 @@ class CourseService extends BaseService {
 
         // Teacher: Soft Delete (Archive)
         if (!isHardDelete) return await super.updateById(_id, { status: 'archived' });
-        
+
 
         // Admin: Hard Delete
-        if (isHardDelete) {     
-             if (course.thumbnail?.publicId) {
+        if (isHardDelete) {
+            if (course.thumbnail?.publicId) {
                 await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type);
+            }
+            if (course.video?.publicId) {
+                await cloudinaryService.delete(course.video.publicId, course.video.type);
             }
             return await super.deleteById(_id);
         }
@@ -201,12 +190,12 @@ class CourseService extends BaseService {
      * @returns {Object} Map { courseId: { minCost, currency } }
      */
     async _getMinPrices(courseIds) {
-        const stats = await Group.aggregate([
-            { 
-                $match: { 
+        const stats = await this.model.db.model('Group').aggregate([
+            {
+                $match: {
                     courseId: { $in: courseIds },
-                    status: { $ne: 'closed' } 
-                } 
+                    status: { $ne: 'closed' }
+                }
             },
             { $sort: { price: 1 } },
             {

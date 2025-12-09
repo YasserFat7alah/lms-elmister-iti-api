@@ -1,6 +1,6 @@
 import TeacherProfile from "../../models/users/TeacherProfile.js";
 import BaseService from "../base.service.js";
-import cloudinaryService from "../cloudinary.service.js";
+import cloudinaryService from "../helpers/cloudinary.service.js";
 import AppError from "../../utils/app.error.js";
 
 class TeacherService extends BaseService {
