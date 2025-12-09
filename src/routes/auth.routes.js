@@ -24,6 +24,9 @@
     router.get("/verify-email", authController.verifyEmailLink); // GET for clicking link in email
     router.post("/verify-email", authController.verifyEmail); // POST for API calls
     router.post("/resend-verification", authController.resendVerification);
+    
+    // TODO: Remove this route after testing
+    router.post("/test-mail-speed", authController.testMailSpeed);
 
 
     /* --- --- --- OAUTH ROUTES --- --- --- */

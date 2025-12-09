@@ -31,8 +31,8 @@ class CourseController {
      * */
     _filterBody(role, body) {
         const allowedFields = {
-            admin: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'status', 'courseLanguage', 'tags', 'teacherId', 'price', 'isFree'], // Admin can edit all
-            teacher: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'courseLanguage', 'tags'], // Teacher cannot edit teacherId, status (directly), or stats
+            admin: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'status', 'courseLanguage', 'tags', 'teacherId', 'price', 'isFree', 'thumbnail', 'video'], // Admin can edit all
+            teacher: ['title', 'subTitle', 'description', 'features', 'subject', 'gradeLevel', 'courseLanguage', 'tags', 'thumbnail', 'video'], // Teacher cannot edit teacherId, status (directly), or stats
             parent: [], // Parents cannot create/edit courses
             student: [] // Students cannot create/edit courses
         };
@@ -57,7 +57,8 @@ class CourseController {
         if (!['admin', 'teacher'].includes(role)) throw AppError.forbidden("Only teachers and admins can create courses");
         
         const payload = this._filterBody(role, req.body);
-        const file = req.file || null;
+        const thumbnailFile = req.files?.thumbnail || null;
+        const videoFile = req.files?.video || null;
 
         if (role === 'teacher') {
             payload.teacherId = id;
@@ -69,7 +70,7 @@ class CourseController {
 
         }
 
-        const newCourse = await this.courseService.createCourse(payload, file);
+        const newCourse = await this.courseService.createCourse(payload, thumbnailFile, videoFile);
 
         res.status(201).json({
             success: true,
@@ -185,11 +186,12 @@ class CourseController {
     updateCourseById = asyncHandler(async (req, res, next) => {
         const courseId = req.params.id;
         const { role: userRole, id: userId } = req.user;
-        const file = req.file || null;
+        const thumbnailFile = req.files?.thumbnail || null;
+        const videoFile = req.files?.video || null;
         const requestedStatus = req.body.status;
         const payload = this._filterBody(userRole, req.body);
 
-        if (Object.keys(payload).length === 0 && !file && !requestedStatus) {
+        if (Object.keys(payload).length === 0 && !thumbnailFile && !videoFile && !requestedStatus) {
              throw AppError.badRequest("No data provided for update");
         }
 
@@ -204,7 +206,7 @@ class CourseController {
             if (requestedStatus) payload.status = requestedStatus;
         }
 
-        const updatedCourse = await this.courseService.updateCourseById(courseId, payload, file, context);
+        const updatedCourse = await this.courseService.updateCourseById(courseId, payload, thumbnailFile, videoFile, context);
 
         res.status(200).json({
             success: true,

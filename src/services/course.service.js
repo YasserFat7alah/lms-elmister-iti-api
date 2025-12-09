@@ -15,15 +15,21 @@ class CourseService extends BaseService {
      * @param {Object} thumbnailFile - The thumbnail file to upload.
      * @returns {Object} The newly created course.
      */
-    async createCourse(payload, thumbnailFile) {
+    async createCourse(payload, thumbnailFile, videoFile) {
         let thumbnail = null;
+        let video = null;
 
         if (thumbnailFile) { // If there's a thumbnail to upload
             const uploadResult = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/", { resource_type: "image" });
             thumbnail = { ...uploadResult };
         }
 
-        const newCourse = await super.create({ ...payload, thumbnail });
+        if (videoFile) { // If there's a video to upload
+            const uploadResult = await cloudinaryService.upload(videoFile, "courses/videos/", { resource_type: "video" });
+            video = { ...uploadResult };
+        }
+
+        const newCourse = await super.create({ ...payload, thumbnail, video });
         return newCourse;
     }
 
@@ -112,7 +118,7 @@ class CourseService extends BaseService {
      * @returns {Object} The updated course
      * @throws {Forbidden} You can only update your own courses
      */
-    async updateCourseById(_id, data, thumbnailFile, context) {
+    async updateCourseById(_id, data, thumbnailFile, videoFile, context) {
         const { userId, userRole, isPublishRequest, requestedStatus } = context;
 
         // Existance check
@@ -134,7 +140,17 @@ class CourseService extends BaseService {
             if(uploaded.publicId) thumbnail = { ...uploaded };
         }
 
-        let updates = { ...data, thumbnail };
+        let video = course.video;
+        if (videoFile) {
+            const uploaded = await cloudinaryService.upload(videoFile, "courses/videos/");
+
+            if (video?.publicId && uploaded.publicId) 
+                await cloudinaryService.delete(video.publicId, video.type);
+
+            if(uploaded.publicId) video = { ...uploaded };
+        }
+
+        let updates = { ...data, thumbnail, video };
 
         // Teacher Logic
         if (userRole === 'teacher') {
@@ -178,6 +194,9 @@ class CourseService extends BaseService {
              if (course.thumbnail?.publicId) {
                 await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type);
             }
+            if (course.video?.publicId) {
+                await cloudinaryService.delete(course.video.publicId, course.video.type);
+            }
             return await super.deleteById(_id);
         }
     }
@@ -201,7 +220,7 @@ class CourseService extends BaseService {
      * @returns {Object} Map { courseId: { minCost, currency } }
      */
     async _getMinPrices(courseIds) {
-        const stats = await Group.aggregate([
+        const stats = await this.model.db.model('Group').aggregate([
             { 
                 $match: { 
                     courseId: { $in: courseIds },

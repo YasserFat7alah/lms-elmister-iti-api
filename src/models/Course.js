@@ -36,6 +36,12 @@ const CourseSchema = new mongoose.Schema(
       type: { type: String, default: "image" },
     },
 
+    video: {
+      url: { type: String },
+      publicId: { type: String },
+      type: { type: String, default: "video" },
+    },
+
     subject: {
       type: String,
       required: true,

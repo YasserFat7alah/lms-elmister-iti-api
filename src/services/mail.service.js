@@ -25,15 +25,18 @@ class MailService {
       text: text || body.replace(/<[^>]*>/g, ""),
     };
 
-    const info = await this.transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error("Error sending email:", error);
-        throw new Error("Failed to send email");
-      } else {
-        return info;
-      }
-    });
-    return { success: true, info};
+    try {
+      console.time("sendEmail");
+      const info = await this.transporter.sendMail(mailOptions);
+      console.timeEnd("sendEmail");
+      console.log(`Email sent: ${info.messageId}`);
+      return { success: true, info };
+    } catch (error) {
+       console.error("Error sending email:", error);
+       // Instead of throwing, we might want to return success: false to avoid crashing the request if not critical, 
+       // but for OTP it IS critical. So we throw.
+       throw new Error(`Failed to send email: ${error.message}`);
+    }
   }
 
   /** Password OTP Mail
