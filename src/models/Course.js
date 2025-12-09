@@ -33,13 +33,13 @@ const CourseSchema = new mongoose.Schema(
     thumbnail: {
       url: { type: String },
       publicId: { type: String },
-      type: { type: String, default: "image" },
+      type: { type: String },
     },
 
     video: {
       url: { type: String },
       publicId: { type: String },
-      type: { type: String, default: "video" },
+      type: { type: String },
     },
 
     subject: {

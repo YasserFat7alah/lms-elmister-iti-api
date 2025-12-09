@@ -15,12 +15,11 @@ class CourseService extends BaseService {
      * @param {Object} thumbnailFile - The thumbnail file to upload.
      * @returns {Object} The newly created course.
      */
-async createCourse(payload) { 
-        
+    async createCourse(payload) {
         const newCourse = await super.create(payload);
-
         return newCourse;
     }
+
     /** Retrieve courses by given filters and options.
      * @param {Object} filters - Filter objects.
      * @param {Object} options - Options for pagination.
@@ -34,9 +33,9 @@ async createCourse(payload) {
             const priceQuery = {};
             if (minPrice) priceQuery.price = { $gte: Number(minPrice) };
             if (maxPrice) priceQuery.price = { ...priceQuery.price, $lte: Number(maxPrice) };
-            
+
             const eligibleGroups = await Group.find(priceQuery).distinct('courseId');
-            
+
             if (filters._id) {
                 filters.$and = [{ _id: filters._id }, { _id: { $in: eligibleGroups } }];
                 delete filters._id;
@@ -65,7 +64,7 @@ async createCourse(payload) {
 
             courses.forEach(course => {
                 const priceInfo = pricingMap[course._id.toString()];
-                course.minCost = priceInfo ? priceInfo.minCost : 0; 
+                course.minCost = priceInfo ? priceInfo.minCost : 0;
                 course.currency = priceInfo ? priceInfo.currency : 'usd';
             });
         }
@@ -105,7 +104,7 @@ async createCourse(payload) {
      * @returns {Object} The updated course
      * @throws {Forbidden} You can only update your own courses
      */
-async updateCourseById(_id, data, context) {
+    async updateCourseById(_id, data, context) {
         const { userId, userRole } = context;
 
         // 1. Existance check
@@ -113,30 +112,26 @@ async updateCourseById(_id, data, context) {
         if (!course) throw AppError.notFound("Course not found");
 
         // 2. Ownership check
-        if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) { 
+        if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) {
             throw AppError.forbidden("You can only update your own courses");
         }
-        
-        // 3. Media Cleanup (تنظيف الصور القديمة) 🧹
-        // لو مبعوت thumbnail جديدة (أو null للمسح)، والقديمة كانت موجودة ومختلفة عن الجديدة -> امسح القديمة
-        if (data.thumbnail !== undefined && course.thumbnail?.publicId) {
-            // لو الصورة الجديدة publicId بتاعها مختلف عن القديمة، يبقى القديمة لازم تتمسح
+
+        if (data.thumbnail?.publicId && course.thumbnail?.publicId) {
             if (data.thumbnail?.publicId !== course.thumbnail.publicId) {
                 await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type || 'image');
             }
         }
 
-        // نفس الكلام للفيديو
-        if (data.video !== undefined && course.video?.publicId) {
+        if (data.video?.publicId && course.video?.publicId) {
             if (data.video?.publicId !== course.video.publicId) {
                 await cloudinaryService.delete(course.video.publicId, course.video.type || 'video');
             }
         }
 
-const updatedCourse = await Course.findByIdAndUpdate(_id, data, { 
-            new: true, 
-            runValidators: true 
-        });        
+        const updatedCourse = await Course.findByIdAndUpdate(_id, data, {
+            new: true,
+            runValidators: true
+        });
         return updatedCourse;
     }
 
@@ -162,11 +157,11 @@ const updatedCourse = await Course.findByIdAndUpdate(_id, data, {
 
         // Teacher: Soft Delete (Archive)
         if (!isHardDelete) return await super.updateById(_id, { status: 'archived' });
-        
+
 
         // Admin: Hard Delete
-        if (isHardDelete) {     
-             if (course.thumbnail?.publicId) {
+        if (isHardDelete) {
+            if (course.thumbnail?.publicId) {
                 await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type);
             }
             if (course.video?.publicId) {
@@ -196,11 +191,11 @@ const updatedCourse = await Course.findByIdAndUpdate(_id, data, {
      */
     async _getMinPrices(courseIds) {
         const stats = await this.model.db.model('Group').aggregate([
-            { 
-                $match: { 
+            {
+                $match: {
                     courseId: { $in: courseIds },
-                    status: { $ne: 'closed' } 
-                } 
+                    status: { $ne: 'closed' }
+                }
             },
             { $sort: { price: 1 } },
             {
