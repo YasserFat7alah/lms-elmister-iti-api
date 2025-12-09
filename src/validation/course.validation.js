@@ -19,6 +19,18 @@ export const createCourseSchema = Joi.object({
     "string.min": "Sub-title must be between 3 and 150 characters",
     "string.max": "Sub-title must be between 3 and 150 characters",
   }),
+  
+thumbnail: Joi.object({
+    url: Joi.string().required(),
+    publicId: Joi.string().required(),
+    type: Joi.string().optional()
+  }).optional().allow(null),
+
+  video: Joi.object({
+    url: Joi.string().required(),
+    publicId: Joi.string().required(),
+    type: Joi.string().optional()
+  }).optional().allow(null),
 
   description: Joi.string().trim().min(10).max(2000).required()
     .messages({
@@ -60,6 +72,19 @@ export const updateCourseSchema = Joi.object({
     "string.min": "Sub-title must be between 3 and 150 characters",
     "string.max": "Sub-title must be between 3 and 150 characters",
   }),
+
+
+  thumbnail: Joi.object({
+        url: Joi.string().required(),
+        publicId: Joi.string().required(),
+        type: Joi.string().optional()
+    }).optional().allow(null),
+
+    video: Joi.object({
+        url: Joi.string().required(),
+        publicId: Joi.string().required(),
+        type: Joi.string().optional()
+    }).optional().allow(null),
 
   description: Joi.string().trim().min(10).max(2000).optional()
     .messages({

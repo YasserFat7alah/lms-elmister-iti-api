@@ -15,25 +15,12 @@ class CourseService extends BaseService {
      * @param {Object} thumbnailFile - The thumbnail file to upload.
      * @returns {Object} The newly created course.
      */
-    async createCourse(payload, thumbnailFile, videoFile) {
-        let thumbnail = null;
-        let video = null;
+async createCourse(payload) { 
+        
+        const newCourse = await super.create(payload);
 
-        if (thumbnailFile) { // If there's a thumbnail to upload
-            const uploadResult = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/", { resource_type: "image" });
-            thumbnail = { ...uploadResult };
-        }
-
-        if (videoFile) { // If there's a video to upload
-            const uploadResult = await cloudinaryService.upload(videoFile, "courses/videos/", { resource_type: "video" });
-            video = { ...uploadResult };
-        }
-
-        const newCourse = await super.create({ ...payload, thumbnail, video });
         return newCourse;
     }
-
-
     /** Retrieve courses by given filters and options.
      * @param {Object} filters - Filter objects.
      * @param {Object} options - Options for pagination.
@@ -118,54 +105,42 @@ class CourseService extends BaseService {
      * @returns {Object} The updated course
      * @throws {Forbidden} You can only update your own courses
      */
-    async updateCourseById(_id, data, thumbnailFile, videoFile, context) {
-        const { userId, userRole, isPublishRequest, requestedStatus } = context;
+async updateCourseById(_id, data, context) {
+        const { userId, userRole } = context;
 
-        // Existance check
+        // 1. Existance check
         const course = await super.findById(_id);
         if (!course) throw AppError.notFound("Course not found");
 
-        // Ownership check
+        // 2. Ownership check
         if (userRole === 'teacher' && course.teacherId.toString() !== userId.toString()) { 
-            throw AppError.forbidden("You can only update your own courses");}
+            throw AppError.forbidden("You can only update your own courses");
+        }
         
-        // Thumbnail update
-        let thumbnail = course.thumbnail;
-        if (thumbnailFile) {
-            const uploaded = await cloudinaryService.upload(thumbnailFile, "courses/thumbnails/");
-
-            if (thumbnail?.publicId && uploaded.publicId) 
-                await cloudinaryService.delete(thumbnail.publicId, thumbnail.type);
-
-            if(uploaded.publicId) thumbnail = { ...uploaded };
-        }
-
-        let video = course.video;
-        if (videoFile) {
-            const uploaded = await cloudinaryService.upload(videoFile, "courses/videos/");
-
-            if (video?.publicId && uploaded.publicId) 
-                await cloudinaryService.delete(video.publicId, video.type);
-
-            if(uploaded.publicId) video = { ...uploaded };
-        }
-
-        let updates = { ...data, thumbnail, video };
-
-        // Teacher Logic
-        if (userRole === 'teacher') {
-            if (isPublishRequest && requestedStatus === 'in-review') {
-                if (!course.groups || course.groups.length === 0) {
-                    throw AppError.badRequest("Cannot request publish without at least one group.");
-                }
-                updates.status = 'in-review';
+        // 3. Media Cleanup (تنظيف الصور القديمة) 🧹
+        // لو مبعوت thumbnail جديدة (أو null للمسح)، والقديمة كانت موجودة ومختلفة عن الجديدة -> امسح القديمة
+        if (data.thumbnail !== undefined && course.thumbnail?.publicId) {
+            // لو الصورة الجديدة publicId بتاعها مختلف عن القديمة، يبقى القديمة لازم تتمسح
+            if (data.thumbnail?.publicId !== course.thumbnail.publicId) {
+                await cloudinaryService.delete(course.thumbnail.publicId, course.thumbnail.type || 'image');
             }
-
-            if (course.status === 'published' && !isPublishRequest) updates.status = 'in-review';
         }
 
-        return await super.updateById(_id, updates);
+        // نفس الكلام للفيديو
+        if (data.video !== undefined && course.video?.publicId) {
+            if (data.video?.publicId !== course.video.publicId) {
+                await cloudinaryService.delete(course.video.publicId, course.video.type || 'video');
+            }
+        }
+
+const updatedCourse = await Course.findByIdAndUpdate(_id, data, { 
+            new: true, 
+            runValidators: true 
+        });        
+        return updatedCourse;
     }
+
+
 
     /** Delete course and its associated thumbnail from Cloudinary
      * @param {string} _id - The ID of the course to delete

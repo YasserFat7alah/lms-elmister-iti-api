@@ -51,33 +51,32 @@ class CourseController {
      * @body {object} - The course data
      * @access Private (teacher, admin)
     */
-    createCourse = asyncHandler(async (req, res, next) => {
+createCourse = asyncHandler(async (req, res, next) => {
+        console.log(" DEBUG BODY:", JSON.stringify(req.body, null, 2));
+        
         const { id, role } = req.user;
-
         if (!['admin', 'teacher'].includes(role)) throw AppError.forbidden("Only teachers and admins can create courses");
         
         const payload = this._filterBody(role, req.body);
-        const thumbnailFile = req.files?.thumbnail || null;
-        const videoFile = req.files?.video || null;
+        
+        if (req.body.thumbnail) payload.thumbnail = req.body.thumbnail;
+        if (req.body.video) payload.video = req.body.video;
 
         if (role === 'teacher') {
             payload.teacherId = id;
             payload.status = 'draft'; 
-
         } else if (role === 'admin') {
             if (!req.body.teacherId) throw AppError.badRequest("Admin must specify a teacherId");
             payload.teacherId = req.body.teacherId; 
-
         }
 
-        const newCourse = await this.courseService.createCourse(payload, thumbnailFile, videoFile);
+        const newCourse = await this.courseService.createCourse(payload);
 
         res.status(201).json({
             success: true,
             message: "Course created successfully",
             data: newCourse
         });
-
     });
 
     /** Get All Courses
@@ -183,30 +182,35 @@ class CourseController {
      * Edit a Course
      * @route Patch /api/v1/groups/:id
     */
-    updateCourseById = asyncHandler(async (req, res, next) => {
+updateCourseById = asyncHandler(async (req, res, next) => {
         const courseId = req.params.id;
         const { role: userRole, id: userId } = req.user;
-        const thumbnailFile = req.files?.thumbnail || null;
-        const videoFile = req.files?.video || null;
+        
+
         const requestedStatus = req.body.status;
+        
         const payload = this._filterBody(userRole, req.body);
 
-        if (Object.keys(payload).length === 0 && !thumbnailFile && !videoFile && !requestedStatus) {
+        if (req.body.thumbnail !== undefined) payload.thumbnail = req.body.thumbnail;
+        if (req.body.video !== undefined) payload.video = req.body.video;
+
+        if (Object.keys(payload).length === 0 && !requestedStatus) {
              throw AppError.badRequest("No data provided for update");
         }
 
         let context = { userId, userRole, isPublishRequest: false };
 
-         if (userRole === 'teacher') {
-            if (requestedStatus === 'published' || requestedStatus === 'in-review') {
+        if (userRole === 'teacher') {
+            if (requestedStatus === 'published' || requestedStatus === 'in-review' || requestedStatus === 'draft') {
                 context.isPublishRequest = true;
                 context.requestedStatus = requestedStatus;
+                payload.status = requestedStatus;
             }
         } else if (userRole === 'admin') {
             if (requestedStatus) payload.status = requestedStatus;
         }
 
-        const updatedCourse = await this.courseService.updateCourseById(courseId, payload, thumbnailFile, videoFile, context);
+        const updatedCourse = await this.courseService.updateCourseById(courseId, payload, context);
 
         res.status(200).json({
             success: true,
@@ -214,6 +218,7 @@ class CourseController {
             data: updatedCourse
         });
     });
+
 
     /** Delete a Course by ID
      * @route DELETE /api/v1/groups/:id

@@ -155,6 +155,8 @@ class AuthController {
         const { accessToken, refreshToken: newRefreshToken, user } = await this.authService.refreshTokens(oldRefreshToken);
 
         this.authService.setRefreshCookie(res, newRefreshToken);
+
+this.authService.setAccessCookie(res, accessToken);
         res.status(200).json({
             success: true,
             message: 'Token refreshed successfully',
