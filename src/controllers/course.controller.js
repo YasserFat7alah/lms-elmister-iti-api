@@ -110,7 +110,7 @@ class CourseController {
      * @access varies
      */
     getAllCourses = asyncHandler(async (req, res, next) => {
-        const { page, limit, minPrice, maxPrice, ...filters } = req.query;
+        const { page, limit, minPrice, maxPrice, priceRanges, ...filters } = req.query;
         const { id, role } = req.user || {};
 
         let populateOptions = [
@@ -179,6 +179,7 @@ class CourseController {
             limit,
             minPrice,
             maxPrice,
+            priceRanges,
             populate: populateOptions,
             calculatePrice,
         });
