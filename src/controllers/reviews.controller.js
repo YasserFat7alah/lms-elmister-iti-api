@@ -10,8 +10,11 @@ export class ReviewController {
      * @route POST api/v1/reviews
      * */
     addReview = asyncHandler(async (req, res) => {
-        const { courseId, rating, comment } = req.body;
-        const review = await this.reviewService.createReview(req.user._id, courseId, rating, comment);
+        const { targetId, targetModel, rating, comment } = req.body;
+        // Default targetModel to 'Course' for backward compatibility if needed, or enforce it
+        const model = targetModel || 'Course';
+
+        const review = await this.reviewService.createReview(req.user._id, targetId, model, rating, comment);
         res.status(201).json({
             success: true,
             data: review
@@ -24,7 +27,7 @@ export class ReviewController {
      * */
     updateReview = asyncHandler(async (req, res) => {
         const { reviewId } = req.params;
-        const {  rating, comment } = req.body;
+        const { rating, comment } = req.body;
         const review = await this.reviewService.updateReview(reviewId, req.user._id, rating, comment);
         res.status(200).json({
             success: true,
@@ -46,12 +49,15 @@ export class ReviewController {
         });
     });
 
-    /** Get reviews by course 
-     * @route GET api/v1/reviews/:courseId
-    */
-    getReviewsByCourse = asyncHandler(async (req, res) => {
-        const { courseId } = req.params;
-        const reviews = await this.reviewService.getReviewsByCourse(courseId);
+    /** Get reviews by target 
+     * @route GET api/v1/reviews/:targetId
+     */
+    getReviewsByTarget = asyncHandler(async (req, res) => {
+        const { targetId } = req.params;
+        const { targetModel } = req.query;
+        const model = targetModel || 'Course';
+
+        const reviews = await this.reviewService.getReviewsByTarget(targetId, model);
         res.status(200).json({
             success: true,
             data: reviews

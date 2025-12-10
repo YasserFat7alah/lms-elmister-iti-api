@@ -3,6 +3,7 @@ import AppError from "../utils/app.error.js";
 import enrollmentService from "../services/subscriptions/enrollment.service.js";
 import courseService from "../services/course.service.js";
 import ParentProfile from "../models/users/ParentProfile.js";
+import User from "../models/users/User.js";
 
 /**
  * Course Controller
@@ -171,6 +172,30 @@ class CourseController {
         else {
             filters.status = "published";
             calculatePrice = true;
+        }
+
+        // --- Search Logic (Multi-field) ---
+        if (req.query.search) {
+            const searchRegex = new RegExp(req.query.search, 'i');
+
+            // 1. Find teachers matching the name
+            const matchingTeachers = await User.find({
+                name: { $regex: searchRegex },
+                role: 'teacher'
+            }).select('_id');
+            const teacherIds = matchingTeachers.map(t => t._id);
+
+            // 2. Construct $or query
+            filters.$or = [
+                { title: { $regex: searchRegex } },
+                { subTitle: { $regex: searchRegex } },
+                { description: { $regex: searchRegex } },
+                { tags: { $regex: searchRegex } },
+                { teacherId: { $in: teacherIds } }
+            ];
+
+            // Remove 'search' from filters to avoid schema error
+            delete filters.search;
         }
 
         // --- Execute Service ---

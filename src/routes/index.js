@@ -11,6 +11,7 @@ import { lessonRouter } from "./courses/lesson.routes.js";
 import { enrollmentRouter } from "./users/enrollment.routes.js";
 import { payoutRouter } from "./users/payout.routes.js";
 import { testimonialRouter } from "./testimonial.routes.js";
+import commentRouter from "./courses/comments.routes.js";
 import { assignmentRouter } from "./assignments/assignment.routes.js";
 import { submissionRouter } from "./assignments/submission.routes.js";
 import { notificationRouter } from "./notification.routes.js";
@@ -21,7 +22,7 @@ import { cloudinaryRouter } from "./helpers/cloudinary.routes.js";
 const router = express.Router();
 
 router.use("/public", publicRouter);
-router.use("/auth",authRouter);
+router.use("/auth", authRouter);
 router.use("/testimonials", testimonialRouter);
 
 /* --- --- --- USER ENDPOINTS --- --- --- */
@@ -31,6 +32,7 @@ router.use("/teachers", teacherRouter);
 router.use("/enrollments", enrollmentRouter);
 router.use("/payouts", payoutRouter);
 router.use("/reviews", reviewRouter);
+router.use("/comments", commentRouter);
 
 /* --- --- --- COURSE ENDPOINTS --- --- --- */
 router.use("/courses", courseRouter);

@@ -4,7 +4,7 @@ import { GRADE_LEVELS } from "../utils/constants.js";
 const CourseSchema = new mongoose.Schema(
   {
     /* user-facing fields */
-    
+
     title: {
       type: String,
       required: true,
@@ -27,7 +27,7 @@ const CourseSchema = new mongoose.Schema(
     features: [{
       type: String,
       trim: true,
-      maxlength:300,
+      maxlength: 300,
     }],
 
     thumbnail: {
@@ -56,7 +56,7 @@ const CourseSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft","in-review", "published", "archived"],
+      enum: ["draft", "in-review", "published", "archived"],
       default: "draft",
     },
 
@@ -108,5 +108,23 @@ CourseSchema.index({ teacherId: 1 });
 CourseSchema.index({ tags: 1 });
 CourseSchema.index({ status: 1 });
 CourseSchema.index({ title: "text", description: "text" });
+
+CourseSchema.virtual('reviews', {
+  ref: 'Review',
+  localField: '_id',
+  foreignField: 'target',
+  match: { targetModel: 'Course' }
+});
+
+CourseSchema.virtual('comments', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'target',
+  match: { targetModel: 'Course' }
+});
+
+// Ensure virtuals are included
+CourseSchema.set('toObject', { virtuals: true });
+CourseSchema.set('toJSON', { virtuals: true });
 
 export default mongoose.model("Course", CourseSchema);

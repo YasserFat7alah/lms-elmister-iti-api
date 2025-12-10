@@ -1,75 +1,103 @@
 import AppError from "../utils/app.error.js";
 import Review from "../models/Reviews.js";
+import mongoose from "mongoose";
 import BaseService from "./base.service.js";
 
 export class ReviewService extends BaseService {
-    constructor({ model, courseService }) {
-        super( model );
-        this.courseService = courseService;
+    constructor({ model, courseModel, teacherProfileModel }) {
+        super(model);
+        this.courseModel = courseModel;
+        this.teacherProfileModel = teacherProfileModel;
     }
 
+    /**
+     * Helper to get the correct model based on target type
+     * @param {string} targetModel 
+     */
+    getModel(targetModel) {
+        if (targetModel === 'Course') return this.courseModel;
+        if (targetModel === 'User') return this.teacherProfileModel; // Ratings strictly go to TeacherProfile
+        throw AppError.badRequest("Invalid review target");
+    }
+
+    /**
+     * Internal helper to update target's average rating
+     */
+    async updateTargetRating(targetId, targetModel) {
+        const Model = this.getModel(targetModel);
+
+        // Find if target exists (TeacherProfile is linked by 'user' field, Course by '_id')
+        const query = targetModel === 'User' ? { user: targetId } : { _id: targetId };
+        const target = await Model.findOne(query);
+
+        if (!target) return; // Should likely log this error
+
+        // Aggregation to calculate new average
+        const stats = await this.model.aggregate([
+            {
+                $match: { target: new mongoose.Types.ObjectId(targetId), targetModel }
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgRating: { $avg: "$rating" },
+                    nRatings: { $sum: 1 }
+                }
+            }
+        ]);
+
+        if (stats.length > 0) {
+            target.averageRating = stats[0].avgRating;
+            target.totalRatings = stats[0].nRatings; // Renamed from ratingsCount to match TeacherProfile standard if needed, or unify
+            // Note: Course uses `ratingsCount`, TeacherProfile uses `totalRatings`.
+            // We need to handle this discrepancy.
+            if (targetModel === 'Course') target.ratingsCount = stats[0].nRatings;
+            // For TeacherProfile it is totalRatings
+        } else {
+            target.averageRating = 0;
+            if (targetModel === 'Course') target.ratingsCount = 0;
+            else target.totalRatings = 0;
+        }
+
+        await target.save();
+    }
 
     /**
      * Creates a new review
-     * @param {string} userId - The ID of the user who is creating the review
-     * @param {string} courseId - The ID of the course being reviewed
-     * @param {number} rating - The rating of the review
-     * @param {string} comment - The comment of the review
-     * @throws {badRequest} If the user has already reviewed the course
-     * @returns {Promise<Review>} The newly created review
      */
-    async createReview(userId, courseId, rating, comment) {
-        // Prevent duplicate review by same user
-        const existing = await this.model.findOne({ user: userId, course: courseId });
+    async createReview(userId, targetId, targetModel, rating, comment) {
+        // Prevent duplicate
+        const existing = await this.model.findOne({ user: userId, target: targetId, targetModel });
         if (existing) {
-            throw AppError.badRequest("You have already reviewed this course");
+            throw AppError.badRequest(`You have already reviewed this ${targetModel}`);
         }
 
         const review = await super.create({
             user: userId,
-            course: courseId,
+            target: targetId,
+            targetModel,
             rating,
             comment,
         });
 
-        // Incrementally update course rating
-        const course = await this.courseService.findById(courseId);
-        course.averageRating =
-            (course.averageRating * course.ratingsCount + rating) / (course.ratingsCount + 1);
-        course.ratingsCount += 1;
-        await course.save();
+        await this.updateTargetRating(targetId, targetModel);
 
         return review;
     }
 
-
     /**
-     * Updates a review by ID.
-     * Checks if the user is the owner of the review before updating.
-     * Updates the course averageRating after updating the review.
-     * @param {string} reviewId - The ID of the review to update
-     * @param {string} userId - The ID of the user updating the review
-     * @param {number} rating - The new rating of the review
-     * @param {string} comment - The new comment of the review
-     * @throws {Forbidden} You can only update your own reviews
-     * @returns {Promise<Review>} The updated review
+     * Updates a review
      */
     async updateReview(reviewId, userId, rating, comment) {
         const review = await super.findById(reviewId);
         if (!review) throw AppError.notFound("Review not found");
-        // Prevent user from updating another user's review
         if (review.user.toString() !== userId.toString()) throw AppError.forbidden("Not allowed");
 
-        const oldRating = review.rating;
         review.rating = rating ?? review.rating;
         review.comment = comment ?? review.comment;
         await review.save();
 
-        // Update course averageRating
-        const course = await this.courseService.findById(review.course);
-        course.averageRating =
-            (course.averageRating * course.ratingsCount - oldRating + rating) / course.ratingsCount;
-        await course.save();
+        await this.updateTargetRating(review.target, review.targetModel);
 
         return review;
     }
@@ -78,36 +106,22 @@ export class ReviewService extends BaseService {
     async deleteReview(reviewId, userId) {
         const review = await super.findById(reviewId);
         if (!review) throw AppError.notFound("Review not found");
-        // Prevent user from deleting another user's review
         if (review.user.toString() !== userId.toString()) throw AppError.forbidden("Not allowed");
 
-        const deletedRating = review.rating;
-        const course = await this.courseService.findById(review.course);
+        const { target, targetModel } = review;
         await super.deleteById(reviewId);
 
-        // Update course averageRating
-        if (course.ratingsCount > 1) {
-            course.averageRating =
-                (course.averageRating * course.ratingsCount - deletedRating) / (course.ratingsCount - 1);
-            course.ratingsCount -= 1;
-        } else {
-            course.averageRating = 0;
-            course.ratingsCount = 0;
-        }
-
-        await course.save();
+        await this.updateTargetRating(target, targetModel);
         return { message: "Review deleted successfully" };
     }
 
-
-
     /**
-     * Retrieves all reviews for a given course ID
-     * @param {string} courseId - The ID of the course to retrieve reviews for
-     * @returns {Promise<Review[]>} An array of review objects
+     * Retrieves reviews for a target
      */
-    async getReviewsByCourse(courseId) {
-        return this.model.find({ course: courseId }).populate("course", "title").populate("user", "name email");
+    async getReviewsByTarget(targetId, targetModel) {
+        return this.model.find({ target: targetId, targetModel })
+            .populate("user", "name email avatar")
+            .sort("-createdAt");
     }
 }
 
