@@ -1,4 +1,5 @@
 import Course from "../models/Course.js";
+import User from "../models/users/User.js";
 import BaseService from "./base.service.js";
 import cloudinaryService from "./helpers/cloudinary.service.js";
 import AppError from "../utils/app.error.js";
@@ -26,21 +27,101 @@ class CourseService extends BaseService {
      * @return {Promise<Object>} - An object containing total number of courses, current page, total number of pages, and an array of course objects.
      */
     async getCourses(filters, options) {
-        const { page = 1, limit = 10, minPrice, maxPrice, populate, calculatePrice } = options;
+        const { page = 1, limit = 10, minPrice, maxPrice, priceRanges = [], populate, calculatePrice } = options;
         const skip = (page - 1) * limit;
 
-        if (minPrice !== undefined || maxPrice !== undefined) {
-            const priceQuery = {};
-            if (minPrice) priceQuery.price = { $gte: Number(minPrice) };
-            if (maxPrice) priceQuery.price = { ...priceQuery.price, $lte: Number(maxPrice) };
+        // --- Filter Mapping (Frontend -> Backend) ---
+        if (filters.selectedSubjects) {
+            // Handle array or single string
+            const subjects = Array.isArray(filters.selectedSubjects) ? filters.selectedSubjects : [filters.selectedSubjects];
+            if (subjects.length > 0) filters.subject = { $in: subjects };
+            delete filters.selectedSubjects;
+        }
 
-            const eligibleGroups = await Group.find(priceQuery).distinct('courseId');
+        if (filters.languageFilter) {
+            const langs = Array.isArray(filters.languageFilter) ? filters.languageFilter : [filters.languageFilter];
+            if (langs.length > 0) filters.courseLanguage = { $in: langs.map(l => new RegExp(l, 'i')) }; // Case insensitive check
+            delete filters.languageFilter;
+        }
 
-            if (filters._id) {
-                filters.$and = [{ _id: filters._id }, { _id: { $in: eligibleGroups } }];
-                delete filters._id;
+        // gradeLevel comes from controller query. If it's an array, map it.
+        // Frontend sends 'gradeFilter' -> 'gradeLevel' in query params?
+        // Checking page.jsx: gradeLevel: gradeFilter.length > 0 ? gradeFilter : undefined
+        // So req.query.gradeLevel is what we get.
+        if (filters.gradeLevel && Array.isArray(filters.gradeLevel)) {
+            filters.gradeLevel = { $in: filters.gradeLevel };
+        }
+
+
+        // Extract search from filters if present
+        let search = filters.search;
+        delete filters.search; // Remove search from direct filters
+
+        // Build Search Query (Teacher Name, Title, SubTitle, Tags, GradeLevel)
+        if (search) {
+            const escapeRegex = (text) => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+            const searchRegex = new RegExp(escapeRegex(search), 'i');
+
+            // 1. Find matching teachers first
+            const matchingTeachers = await User.find({
+                role: 'teacher',
+                $or: [
+                    { name: searchRegex },
+                    { username: searchRegex }
+                ]
+            }).distinct('_id');
+
+            // 2. Build OR condition
+            const searchOrConditions = [
+                { title: searchRegex },
+                { subTitle: searchRegex },
+                { tags: searchRegex },
+                { gradeLevel: searchRegex },
+                { teacherId: { $in: matchingTeachers } }
+            ];
+
+            // 3. Merge with existing filters
+            if (filters.$and) {
+                filters.$and.push({ $or: searchOrConditions });
             } else {
-                filters._id = { $in: eligibleGroups };
+                filters.$and = [{ $or: searchOrConditions }];
+            }
+        }
+
+        // Price Filtering Logic (Supports Min/Max OR standard Ranges)
+        if ((minPrice !== undefined || maxPrice !== undefined) || (priceRanges)) {
+            const priceQuery = {};
+            const orConditions = [];
+
+            // 1. Standard Min/Max
+            if (minPrice !== undefined || maxPrice !== undefined) {
+                const min = minPrice !== undefined ? Number(minPrice) : 0;
+                const max = maxPrice !== undefined ? Number(maxPrice) : Infinity;
+
+                if (min === 0 && max === 0) {
+                    orConditions.push({ $or: [{ price: 0 }, { isFree: true }] });
+                } else {
+                    const range = {};
+                    if (minPrice !== undefined) range.$gte = min;
+                    if (maxPrice !== undefined) range.$lte = max;
+                    orConditions.push({ price: range });
+                }
+            }
+
+            if (orConditions.length > 0) {
+                const eligibleGroups = await Group.find({ $or: orConditions }).distinct('courseId');
+
+                // Merge with search/existing $and
+                if (filters.$and) {
+                    filters.$and.push({ _id: { $in: eligibleGroups } });
+                } else {
+                    if (filters._id) {
+                        filters.$and = [{ _id: filters._id }, { _id: { $in: eligibleGroups } }];
+                        delete filters._id;
+                    } else {
+                        filters._id = { $in: eligibleGroups };
+                    }
+                }
             }
         }
 
@@ -52,13 +133,21 @@ class CourseService extends BaseService {
 
         if (populate) query.populate(populate);
 
-        // 4. Execute Query & Count - AND Aggregate Filters
-        const [courses, total, distinctSubjects, distinctGrades, distinctLanguages] = await Promise.all([
+        // 4. Execute Query & Count & Filters
+        const [courses, total, filterStats] = await Promise.all([
             query,
             this.model.countDocuments(filters),
-            this.model.distinct('subject', { status: 'published' }),
-            this.model.distinct('gradeLevel', { status: 'published' }),
-            this.model.distinct('courseLanguage', { status: 'published' })
+            this.model.aggregate([
+                { $match: { status: 'published' } },
+                {
+                    $group: {
+                        _id: null,
+                        subjects: { $addToSet: "$subject" },
+                        gradeLevels: { $addToSet: "$gradeLevel" },
+                        languages: { $addToSet: "$courseLanguage" }
+                    }
+                }
+            ])
         ]);
 
         if (calculatePrice && courses.length > 0) {
@@ -72,16 +161,31 @@ class CourseService extends BaseService {
             });
         }
 
+        const filtersData = filterStats.length > 0 ? {
+            subjects: filterStats[0].subjects.sort(),
+            gradeLevels: filterStats[0].gradeLevels.sort(),
+            languages: filterStats[0].languages.sort()
+        } : { subjects: [], gradeLevels: [], languages: [] };
+
+        // Post-processing: Map teacherId to teacher and Ensure Avatar URL
+        const mappedCourses = courses.map(course => {
+            if (course.teacherId) {
+                course.teacher = {
+                    ...course.teacherId,
+                    avatar: course.teacherId.avatar?.url || course.teacherId.avatar
+                };
+                // We keep teacherId for backward compatibility if needed, or we can just alias it.
+                // The user specifically asked: add teacher image as teacher {avatar: avatar.url }
+            }
+            return course;
+        });
+
         return {
             total,
             page: parseInt(page),
             pages: Math.ceil(total / limit),
-            data: courses,
-            filters: {
-                subjects: distinctSubjects.sort(),
-                gradeLevels: distinctGrades.sort((a, b) => a - b), // Numeric sort if possible
-                languages: distinctLanguages.sort()
-            }
+            filters: filtersData,
+            data: mappedCourses
         };
     }
 
@@ -284,4 +388,3 @@ class CourseService extends BaseService {
 }
 
 export default new CourseService(Course);
-
