@@ -133,21 +133,13 @@ class CourseService extends BaseService {
 
         if (populate) query.populate(populate);
 
-        // 4. Execute Query & Count & Filters
-        const [courses, total, filterStats] = await Promise.all([
+        // 4. Execute Query & Count - AND Aggregate Filters
+        const [courses, total, distinctSubjects, distinctGrades, distinctLanguages] = await Promise.all([
             query,
             this.model.countDocuments(filters),
-            this.model.aggregate([
-                { $match: { status: 'published' } },
-                {
-                    $group: {
-                        _id: null,
-                        subjects: { $addToSet: "$subject" },
-                        gradeLevels: { $addToSet: "$gradeLevel" },
-                        languages: { $addToSet: "$courseLanguage" }
-                    }
-                }
-            ])
+            this.model.distinct('subject', { status: 'published' }),
+            this.model.distinct('gradeLevel', { status: 'published' }),
+            this.model.distinct('courseLanguage', { status: 'published' })
         ]);
 
         if (calculatePrice && courses.length > 0) {
@@ -184,8 +176,12 @@ class CourseService extends BaseService {
             total,
             page: parseInt(page),
             pages: Math.ceil(total / limit),
-            filters: filtersData,
-            data: mappedCourses
+            data: courses,
+            filters: {
+                subjects: distinctSubjects.sort(),
+                gradeLevels: distinctGrades.sort((a, b) => a - b), // Numeric sort if possible
+                languages: distinctLanguages.sort()
+            }
         };
     }
 
@@ -197,12 +193,69 @@ class CourseService extends BaseService {
     async getCourseById(_id) {
         const course = await this.model
             .findById(_id)
-            .populate('teacherId')
-            .populate('groups');
+            .populate({
+                path: 'teacherId',
+                populate: { path: 'teacherData' } // Populate virtual teacherData to get profile details
+            })
+            .populate({
+                path: 'groups',
+                populate: {
+                    path: 'lessons',
+                    select: 'title type order'
+                }
+            })
+            .populate({
+                path: 'reviews',
+                populate: { path: 'user', select: 'name avatar' }
+            })
+            .populate({
+                path: 'comments',
+                populate: { path: 'user', select: 'name avatar' }
+            })
+            .lean({ virtuals: true });
 
         if (!course) {
             throw AppError.notFound("Course not found");
         }
+
+        // Calculate pricing
+        const pricingMap = await this._getMinPrices([_id]);
+        const priceInfo = pricingMap[_id.toString()];
+
+        course.minCost = priceInfo ? priceInfo.minCost : 0;
+        course.currency = priceInfo ? priceInfo.currency : 'usd';
+
+        // Calculate Instructor Stats (Courses & Lessons)
+        if (course.teacherId) {
+            const teacherId = course.teacherId._id;
+            const stats = await this.model.aggregate([
+                { $match: { teacherId: teacherId } }, // Filter by teacher
+                { $lookup: { from: 'groups', localField: 'groups', foreignField: '_id', as: 'groupData' } }, // Lookup groups
+                {
+                    $project: {
+                        studentsCount: {
+                            $sum: {
+                                $map: { input: "$groupData", as: "g", in: { $ifNull: ["$$g.studentsCount", 0] } }
+                            }
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalCourses: { $sum: 1 },
+                        totalStudents: { $sum: "$studentsCount" }
+                    }
+                }
+            ]);
+
+            const instructorStats = stats[0] || { totalCourses: 0, totalStudents: 0 };
+
+            // Attach to teacherId object
+            course.teacherId.coursesCount = instructorStats.totalCourses;
+            course.teacherId.totalStudents = instructorStats.totalStudents;
+        }
+
         return course;
     }
 

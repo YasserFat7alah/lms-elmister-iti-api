@@ -1,3 +1,6 @@
+import ParentProfile from "../models/users/ParentProfile.js";
+import StudentProfile from "../models/users/StudentProfile.js";
+import Enrollment from "../models/Enrollment.js";
 import User from "../models/users/User.js";
 import AppError from "../utils/app.error.js";
 import BaseService from "./base.service.js";
@@ -133,7 +136,7 @@ class UserService extends BaseService {
       query.exec(),
       this.model.countDocuments(filterQuery),
     ]);
-    
+
     return {
       total,
       page: pageNum,
@@ -159,6 +162,48 @@ class UserService extends BaseService {
 
     user.password = newPassword;
     await user.save();
+  }
+
+  /** Get children for current user (Parent)
+   * @param {string} userId - ID of the parent
+   * @param {string} courseId - Optional course ID to check enrollment
+   */
+  async getChildren(userId, courseId) {
+    // 1. Get Parent Profile
+    const parentProfile = await ParentProfile.findOne({ user: userId }).populate({
+      path: 'children',
+      select: 'name avatar username'
+    });
+
+    if (!parentProfile || !parentProfile.children) {
+      return [];
+    }
+
+    // 2. Hydrate children with Student Profile (Grade) & Enrollment Status
+    const childrenData = await Promise.all(parentProfile.children.map(async (child) => {
+      const studentProfile = await StudentProfile.findOne({ user: child._id });
+
+      let enrollmentStatus = null;
+      if (courseId) {
+        const enrollment = await Enrollment.findOne({
+          student: child._id,
+          course: courseId,
+          status: 'active'
+        });
+        enrollmentStatus = !!enrollment;
+      }
+
+      return {
+        _id: child._id,
+        name: child.name,
+        username: child.username,
+        avatar: child.avatar,
+        grade: studentProfile?.grade,
+        isEnrolled: enrollmentStatus
+      };
+    }));
+
+    return childrenData;
   }
 }
 

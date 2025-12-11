@@ -15,9 +15,6 @@ const { authenticate, authorize } = auth;
 router.use(authenticate);
 router.get("/", courseController.getAllCourses);
 router.get("/:id", courseController.getCourseById);
-
-/* --- --- --- PROTECTED ROUTES --- --- --- */
-router.use(authorize("teacher", "admin"));
 router.post("/", validate(createCourseSchema), courseController.createCourse);
 router.patch("/:id", validate(updateCourseSchema), courseController.updateCourseById);
 router.delete("/:id", courseController.deleteCourseById);

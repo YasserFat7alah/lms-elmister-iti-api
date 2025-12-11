@@ -54,10 +54,23 @@ class UserController {
 
     // const userId = req.user.id;
     // const userRole = req.user.role;
-    const users = await this.userService.findAll({ role, subject, name, gradeLevel } , { page, limit });
+    const users = await this.userService.findAll({ role, subject, name, gradeLevel }, { page, limit });
     res.status(200).json({
       success: true,
       data: { users },
+    });
+  });
+
+  getMyChildren = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { courseId } = req.query;
+
+
+    const children = await this.userService.getChildren(userId, courseId);
+
+    res.status(200).json({
+      success: true,
+      data: { children }
     });
   });
 }

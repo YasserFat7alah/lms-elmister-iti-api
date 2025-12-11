@@ -134,9 +134,35 @@ export class AuthService extends BaseService {
     if (!isPasswordMatch) {
       throw AppError.unauthorized("Invalid email or password.");
     }
+
+    // Populate profile data based on role
+    let query = this.model.findById(user._id);
+    const role = user.role;
+
+    if (role === "teacher") query = query.populate("teacherData");
+    else if (role === "student") query = query.populate("studentData");
+    else if (role === "parent") {
+      query = query.populate({
+        path: "parentData",
+        populate: { path: "children", select: "name avatar username gradeLevel" }
+      });
+    }
+
+    let userObj = await query.lean();
+
+    // Flatten profile data
+    if (userObj[`${role}Data`]) {
+      userObj = {
+        ...userObj,
+        ...userObj[`${role}Data`],
+        isProfileCompleted: true
+      };
+      delete userObj[`${role}Data`];
+    }
+
     const { accessToken, refreshToken } = this.generateTokens(user);
     return {
-      user: this.sanitize(user),
+      user: this.sanitize(userObj),
       accessToken,
       refreshToken,
     };
@@ -176,6 +202,8 @@ export class AuthService extends BaseService {
       await ParentProfile.create({
         user: userId,
         address: data.address,
+        phone: data.phone,
+        children: data.children
       });
     }
 
