@@ -10,37 +10,47 @@ import multerMiddleware from "../../middlewares/multer.middleware.js";
 
 const router = express.Router();
 
-//middlewares
+// middlewares
 const { authenticate, authorize } = auth;
 const uploadFiles = multerMiddleware.fields([
-    { name: "video"},
-    { name: "document"}
+    { name: "video" },
+    { name: "document" }
 ]);
 
-//instances
-const lessonService = new LessonService(Lesson,Group);
+// instances
+const lessonService = new LessonService(Lesson, Group);
 const lessonController = new LessonController(lessonService)
 
 /*---------------------------- routes (all routes are protected)----------------------------*/
 router.use(authenticate);
 
-//create lesson
-router.post("/", authorize("teacher", "admin"),uploadFiles, validate(createLessonSchema), lessonController.createLesson);
+// create lesson (Schedule or Content)
+router.post("/", authorize("teacher", "admin"), uploadFiles, validate(createLessonSchema), lessonController.createLesson);
 
-//getlessons by group (all lessons inside a specific group)
-router.get("/group/:groupId", lessonController.getLessonsByGroup);
+// Mark Attendance for a specific lesson
+router.post("/:id/attendance", authorize("teacher", "admin"), lessonController.markAttendance);
 
-//update a lesson
-router.patch("/:id", authorize("teacher", "admin"),uploadFiles, validate(updateLessonSchema), lessonController.updateLesson);
+router.get("/:id", authorize("teacher", "admin", "student"), lessonController.getLessonById);
+router.get("/group/:groupId", authorize("teacher", "admin", "student"), lessonController.getLessonsByGroup);
 
-//delete a lesson and its content
+// add lesson matrial
+router.post("/:id/materials", authorize("teacher", "admin"), lessonController.addLessonMaterial);
+
+// delete lesson material
+router.delete("/:id/materials/:materialId", authorize("teacher", "admin"), lessonController.deleteLessonMaterial);
+// update a lesson
+router.patch("/:id", authorize("teacher", "admin"), uploadFiles, validate(updateLessonSchema), lessonController.updateLesson);
+
+// delete a lesson and its content
 router.delete("/:id", authorize("teacher", "admin"), lessonController.deleteLesson);
+
 // Delete video from a lesson
 router.delete("/:id/video", authorize("teacher", "admin"), lessonController.deleteVideo);
+
 // Delete document[] from a lesson
 router.delete("/:id/document/:docId", authorize("teacher", "admin"), lessonController.deleteDocument);
 
-//reorder lessons
+// reorder lessons (Legacy / Optional if using Calendar)
 router.patch("/reorder/:groupId", authorize("teacher", "admin"), lessonController.reorderLessons);
 
 export { router as lessonRouter };
