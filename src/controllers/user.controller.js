@@ -64,8 +64,7 @@ class UserController {
   getMyChildren = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const { courseId } = req.query;
-    console.log("DEBUG: getMyChildren called for user:", userId);
-    console.log("DEBUG: req.user:", req.user);
+
 
     const children = await this.userService.getChildren(userId, courseId);
 

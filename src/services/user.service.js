@@ -175,12 +175,6 @@ class UserService extends BaseService {
       select: 'name avatar username'
     });
 
-    console.log("DEBUG: Service found parentProfile:", parentProfile ? "YES" : "NO");
-    if (parentProfile) {
-      console.log("DEBUG: parentProfile.children length:", parentProfile.children.length);
-      console.log("DEBUG: parentProfile.children IDs:", parentProfile.children.map(c => c._id));
-    }
-
     if (!parentProfile || !parentProfile.children) {
       return [];
     }
