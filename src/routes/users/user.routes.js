@@ -8,12 +8,13 @@ import { userUpdateSchema } from "../../validation/user.validation.js";
 
 const router = Router();
 const upload = multerMiddleware;
-const { getMe, updateMe, uploadAvatar } =  userController;
+const { getMe, updateMe, uploadAvatar, getMyChildren } = userController;
 
 const { authenticate, authorize } = authMiddleware
 
 
 router.get('/me', authenticate, getMe);
+router.get('/me/children', authenticate, getMyChildren);
 router.patch('/me', authenticate, upload.single('avatar'), validate(userUpdateSchema), updateMe);
 router.post('/me/avatar', authenticate, upload.single('avatar'), uploadAvatar);
 

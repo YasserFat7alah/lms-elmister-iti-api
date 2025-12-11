@@ -13,8 +13,10 @@ export class MulterUploader {
                 "image/svg+xml",
                 "image/tiff",
                 "video/mp4",
+                "video/mkv",
                 "video/mov",
                 "video/avi",
+                "video/x-matroska",
                 "video/wmv",
                 "video/flv",
                 "video/quicktime",
@@ -33,7 +35,7 @@ export class MulterUploader {
 
         this.upload = multer({
             storage: this.storage,
-            limits: { fileSize: 150 * 1024 * 1024 }, // 5MB limit
+            limits: { fileSize: 150 * 1024 * 1024 }, // 150MB limit
 
             fileFilter: this.fileFilter
         });
