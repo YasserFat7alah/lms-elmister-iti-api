@@ -13,6 +13,8 @@ class CloudinaryController {
         const { path, type } = req.body;
         if (!file) throw AppError.badRequest('File is required');
 
+        if (!file.mimetype.startsWith(type)) throw AppError.badRequest('File type does not match');
+
         const uploaded = await this.service.upload(file, path, { resource_type: type });
         if (!uploaded) throw AppError.badRequest('File upload failed');
 

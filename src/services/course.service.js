@@ -110,7 +110,7 @@ class CourseService extends BaseService {
             })
             .populate({
                 path: 'comments',
-                populate: { path: 'user', select: 'name avatar' }
+                populate: { path: 'user', select: 'name avatar role' }
             })
             .lean({ virtuals: true });
 

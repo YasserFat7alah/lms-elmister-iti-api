@@ -20,7 +20,6 @@ const invoiceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Enrollment",
     required: true,
-    index: true,
   },
 
   /* --- --- --- AMOUNTS --- --- --- */

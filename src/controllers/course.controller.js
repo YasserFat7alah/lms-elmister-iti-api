@@ -4,6 +4,7 @@ import enrollmentService from "../services/subscriptions/enrollment.service.js";
 import courseService from "../services/course.service.js";
 import ParentProfile from "../models/users/ParentProfile.js";
 import User from "../models/users/User.js";
+import mongoose from "mongoose";
 
 /**
  * Course Controller
@@ -211,6 +212,67 @@ class CourseController {
         res.status(200).json({
             success: true,
             message: "Courses fetched successfully",
+            ...data,
+        });
+    });
+
+    /** Get Public Courses (No Auth Role Filters)
+     * @query {string} page - The page number
+     * @query {string} limit - The number of items per page
+     */
+    getPublicCourses = asyncHandler(async (req, res, next) => {
+        const { page, limit, minPrice, maxPrice, ...filters } = req.query;
+
+        // Force published only
+        filters.status = "published";
+
+        // Validate and Cast teacherId
+        if (filters.teacherId) {
+            if (filters.teacherId === 'undefined' || filters.teacherId === 'null') {
+                delete filters.teacherId;
+            } else if (mongoose.Types.ObjectId.isValid(filters.teacherId)) {
+                filters.teacherId = new mongoose.Types.ObjectId(filters.teacherId);
+            }
+        }
+
+        let populateOptions = [
+            {
+                path: "teacherId",
+                select: "name username avatar email emailVerified teacherData",
+            },
+        ];
+
+        // --- Search Logic ---
+        if (req.query.search) {
+            const searchRegex = new RegExp(req.query.search, 'i');
+            const matchingTeachers = await User.find({
+                name: { $regex: searchRegex },
+                role: 'teacher'
+            }).select('_id');
+            const teacherIds = matchingTeachers.map(t => t._id);
+
+            filters.$or = [
+                { title: { $regex: searchRegex } },
+                { subTitle: { $regex: searchRegex } },
+                { description: { $regex: searchRegex } },
+                { tags: { $regex: searchRegex } },
+                { teacherId: { $in: teacherIds } }
+            ];
+            delete filters.search;
+        }
+
+        const data = await this.courseService.getCourses(filters, {
+            page,
+            limit,
+            minPrice,
+            maxPrice,
+            populate: populateOptions,
+            calculatePrice: true,
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Public courses fetched successfully",
             ...data,
         });
     });
