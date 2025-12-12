@@ -1,4 +1,5 @@
 import ParentProfile from "../models/users/ParentProfile.js";
+import mongoose from "mongoose";
 import StudentProfile from "../models/users/StudentProfile.js";
 import Enrollment from "../models/Enrollment.js";
 import User from "../models/users/User.js";
@@ -77,7 +78,7 @@ class UserService extends BaseService {
    * @throws {AppError} If no valid fields are provided or user is not found
    */
   async updateMe(userId, data = {}, avatarFile) {
-    const allowedFields = ["name", "username", "email", "phone"];
+    const allowedFields = ["name", "username", "email", "phone", "socialMedia"];
     let avatar = null;
     if (avatarFile) {
       avatar = await this.uploadAvatar(userId, avatarFile);
@@ -204,6 +205,209 @@ class UserService extends BaseService {
     }));
 
     return childrenData;
+  }
+  /** Get public teachers with filtering (Aggregation)
+   * @param {object} filters - { subject, rating, search, minPrice, maxPrice }
+   * @param {object} options - { page, limit }
+   */
+  async getPublicTeachers(filters, options) {
+    const { subject, rating, search } = filters; // rating is minRating
+    const { page = 1, limit = 12 } = options;
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build Aggregation Pipeline
+    const pipeline = [];
+
+    // 1. Match only teachers
+    pipeline.push({ $match: { role: 'teacher' } });
+
+    // 2. Lookup TeacherProfile
+    pipeline.push({
+      $lookup: {
+        from: 'teacherprofiles', // Ensure collection name matches (plural, lowercase usually)
+        localField: '_id',
+        foreignField: 'user',
+        as: 'teacherData'
+      }
+    });
+
+    // 3. Unwind (preserveNullAndEmptyArrays: false -> we only want users WITH a profile)
+    pipeline.push({ $unwind: '$teacherData' });
+
+    // 4. Filter by Search (Name or Username)
+    if (search) {
+      const regex = new RegExp(search, 'i');
+      pipeline.push({
+        $match: {
+          $or: [
+            { name: { $regex: regex } },
+            { username: { $regex: regex } }
+          ]
+        }
+      });
+    }
+
+    // 5. Filter by Subject (in TeacherProfile)
+    if (subject) {
+      // Handle array or single string
+      const subjects = Array.isArray(subject) ? subject : [subject];
+      pipeline.push({
+        $match: {
+          'teacherData.subjects': { $in: subjects }
+        }
+      });
+    }
+
+    // 6. Filter by Rating (in TeacherProfile) -- rating is "4" (starts from 4)
+    if (rating) {
+      // e.g. rating="4" -> averageRating >= 4
+      // If sorting by "top rated", user might pass sort param. Here assume filter.
+      pipeline.push({
+        $match: {
+          'teacherData.averageRating': { $gte: Number(rating) }
+        }
+      });
+    }
+
+    // 7. Facet for Pagination
+    pipeline.push({
+      $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $skip: skip },
+          { $limit: limitNum },
+          {
+            $lookup: {
+              from: 'courses',
+              let: { teacherId: '$_id' },
+              pipeline: [
+                { $match: { $expr: { $eq: ['$teacherId', '$$teacherId'] }, status: 'published' } },
+                { $count: 'count' }
+              ],
+              as: 'coursesCountArr'
+            }
+          },
+          {
+            $lookup: {
+              from: 'groups',
+              let: { teacherId: '$_id' },
+              pipeline: [
+                { $match: { $expr: { $eq: ['$teacherId', '$$teacherId'] } } },
+                { $count: 'count' }
+              ],
+              as: 'groupsCountArr'
+            }
+          },
+          {
+            $addFields: {
+              totalCourses: { $ifNull: [{ $arrayElemAt: ['$coursesCountArr.count', 0] }, 0] },
+              totalGroups: { $ifNull: [{ $arrayElemAt: ['$groupsCountArr.count', 0] }, 0] }
+            }
+          },
+          // Project only necessary fields (Flattening)
+          {
+            $project: {
+              _id: 1,
+              name: 1,
+              username: 1,
+              avatar: 1,
+              // Flatten Teacher Data
+              subjects: '$teacherData.subjects',
+              bio: '$teacherData.bio',
+              averageRating: '$teacherData.averageRating',
+              totalRatings: '$teacherData.totalRatings',
+              yearsOfExperience: '$teacherData.yearsOfExperience',
+              videoIntro: '$teacherData.videoIntro',
+              qualifications: '$teacherData.qualifications',
+              socialMedia: 1,
+              emailVerified: 1, // Taken from root User document
+              totalCourses: 1,
+              totalGroups: 1
+            }
+          }
+        ]
+      }
+    });
+
+    const result = await this.model.aggregate(pipeline);
+
+    const total = result[0].metadata[0] ? result[0].metadata[0].total : 0;
+    const users = result[0].data;
+
+    return {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum) || 1,
+      data: { users },
+      // NOTE: We could also return aggregated filters (available subjects) here if needed later
+    };
+  }
+
+  /** Get User by Username (Public Profile)
+   * @param {string} username
+   */
+  async getUserByUsername(username) {
+    const user = await this.model.findOne({ username }).lean();
+    if (!user) throw AppError.notFound(`User @${username} not found`);
+
+    // Populate based on role
+    let profileData = {};
+    if (user.role === 'teacher') {
+      profileData = await mongoose.model('TeacherProfile').findOne({ user: user._id }).lean();
+
+      // [NEW] Count Published Courses
+      const totalCourses = await mongoose.model('Course').countDocuments({ teacherId: user._id, status: 'published' });
+
+      // [NEW] Count Active Count
+      const totalGroups = await mongoose.model('Group').countDocuments({ teacherId: user._id });
+
+      profileData.totalCourses = totalCourses;
+      profileData.totalGroups = totalGroups;
+
+      // [NEW] Populate Reviews (Limit 10 for now)
+      // Note: We need to use model.populate on the user object or separate query because we used .lean() on findOne
+      // But since we have user._id, let's fetch reviews separately to key them
+      const reviews = await mongoose.model('Review').find({ target: user._id, targetModel: 'User' })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('user', 'name avatar') // Populate reviewer info
+        .lean();
+
+      profileData.reviews = reviews;
+
+    } else if (user.role === 'student') {
+      profileData = await mongoose.model('StudentProfile').findOne({ user: user._id }).lean();
+    }
+    // Parent profile might not be public, but if needed:
+    // else if (user.role === 'parent') ...
+
+    // Flatten and ensure User ID is preserved
+    const fullProfile = {
+      ...user,
+      ...profileData,
+      _id: user._id, // EXPLICITLY preserve User ID
+      profileId: profileData._id, // Keep Profile ID if needed
+      // sanitize sensitive fields
+      password: undefined,
+      __v: undefined,
+      provider: undefined,
+      providerId: undefined,
+      linkedProviders: undefined,
+      otp: undefined,
+      otpExpiry: undefined,
+      payoutAccount: undefined, // Sensitive
+      balance: undefined,       // Sensitive
+      pendingPayouts: undefined, // Sensitive
+      totalEarnings: undefined   // Sensitive
+    };
+
+    // Remove null/undefined
+    Object.keys(fullProfile).forEach(key => fullProfile[key] === undefined && delete fullProfile[key]);
+
+    return fullProfile;
   }
 }
 

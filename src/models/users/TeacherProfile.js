@@ -16,7 +16,7 @@ const TeacherProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000,
     },
-    
+
     videoIntro: {
       url: { type: String },
       publicId: { type: String },
@@ -29,7 +29,7 @@ const TeacherProfileSchema = new mongoose.Schema(
         required: true,
       },
     ],
-    
+
     qualifications: [
       {
         degree: String,
@@ -46,11 +46,11 @@ const TeacherProfileSchema = new mongoose.Schema(
     certificates: [
       {
         image: {
-        url: { type: String },
-        publicId: { type: String },
-        type: { type: String },
-        
-    },
+          url: { type: String },
+          publicId: { type: String },
+          type: { type: String },
+
+        },
         title: {
           type: String,
           trim: true,
@@ -62,6 +62,8 @@ const TeacherProfileSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+
 
     /* --- --- --- earnings --- --- --- */
 

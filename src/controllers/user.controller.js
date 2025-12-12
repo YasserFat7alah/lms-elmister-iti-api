@@ -61,6 +61,35 @@ class UserController {
     });
   });
 
+  /** Get Public Teachers (Filtered & Paginated) */
+  getPublicTeachers = asyncHandler(async (req, res) => {
+    // Extract filters from Query
+    const { subject, rating, search, minPrice, maxPrice } = req.query;
+    const { page, limit } = req.query;
+
+    // Pass to Service
+    const result = await this.userService.getPublicTeachers(
+      { subject, rating, search, minPrice, maxPrice },
+      { page, limit }
+    );
+
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  });
+
+  /** Get Public User Profile by Username */
+  getUserByUsername = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+    const user = await this.userService.getUserByUsername(username);
+
+    res.status(200).json({
+      success: true,
+      data: { user }
+    });
+  });
+
   getMyChildren = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const { courseId } = req.query;

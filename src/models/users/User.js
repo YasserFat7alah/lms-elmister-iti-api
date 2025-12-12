@@ -42,6 +42,15 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    /* --- --- --- Social Media --- --- --- */
+    socialMedia: {
+      facebook: { type: String, trim: true },
+      twitter: { type: String, trim: true },
+      linkedin: { type: String, trim: true },
+      instagram: { type: String, trim: true },
+      youtube: { type: String, trim: true }
+    },
+
     role: {
       type: String,
       enum: ["admin", "teacher", "parent", "student"],
@@ -116,7 +125,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.index({_id: 1, role: 1})
+userSchema.index({ _id: 1, role: 1 })
 
 userSchema.pre("save", async function () {
 
@@ -168,6 +177,13 @@ userSchema.virtual("parentData", {
   localField: "_id",
   foreignField: "user",
   justOne: true,
+});
+
+userSchema.virtual("reviews", {
+  ref: "Review",
+  localField: "_id",
+  foreignField: "target",
+  match: { targetModel: "User" },
 });
 
 export default mongoose.model("User", userSchema);

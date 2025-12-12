@@ -2,6 +2,7 @@ import cloudinary from "../../config/cloudinary.js";
 import fs from "fs";
 import AppError from "../../utils/app.error.js";
 import streamifier from 'streamifier';
+import { log } from "console";
 
 /** Cloudinary service
  * @class CloudinaryService
@@ -32,10 +33,11 @@ export class CloudinaryService {
         ...options,
       },
         (error, result) => {
-          if (error) reject(error);
-          if (!result) reject(new Error("Cloudinary returned empty result"));
+          if (error) throw AppError.badRequest(error.message);
+          if (!result) throw AppError.badRequest("Cloudinary returned empty result");
+
           resolve({
-            url: result.secure_url,
+            url: result.secure_url || result.url,
             publicId: result.public_id,
             type: result.resource_type
           });
