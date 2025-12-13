@@ -16,6 +16,7 @@ import { assignmentRouter } from "./assignments/assignment.routes.js";
 import { submissionRouter } from "./assignments/submission.routes.js";
 import { notificationRouter } from "./notification.routes.js";
 import { cloudinaryRouter } from "./helpers/cloudinary.routes.js";
+import { chatRouter } from "./chat.routes.js";
 
 
 
@@ -42,6 +43,9 @@ router.use("/lessons", lessonRouter);
 router.use("/notifications", notificationRouter);
 router.use("/assignments", assignmentRouter);
 router.use("/submissions", submissionRouter);
+
+/* --- --- --- CHAT ENDPOINTS --- --- --- */
+router.use("/chat", chatRouter);
 
 
 /* --- --- --- HELPERS ENDPOINTS --- --- --- */

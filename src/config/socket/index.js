@@ -1,4 +1,9 @@
 import { Server } from "socket.io";
+import Conversation from "./../../models/chat/Conversation.js";
+import Message from "./../../models/chat/Message.js";
+import authService from "./../../services/auth.service.js";
+import { JWT_SECRET } from "./../../utils/constants.js";
+
 
 let io;
 
@@ -13,6 +18,21 @@ export function initSocket(server, options = {}) {
         cors: { origin: options.frontendOrigin || "*", },
     });
 
+
+    io.use((socket, next) => {
+        try {
+            const token = socket.handshake.auth?.token;
+            if (!token) return next(new Error("Unauthorized"));
+            const payload = authService.verifyToken(token, JWT_SECRET);
+            socket.userId = payload.id;
+            socket.userName = payload.name;
+            socket.userRole = payload.role;
+            next();
+        } catch (err) {
+            next(new Error("Unauthorized"));
+        }
+    });
+
     io.on("connection", (socket) => {
         console.log("New client connected:", socket.id);
 
@@ -23,11 +43,72 @@ export function initSocket(server, options = {}) {
          * groupId: for course/class group notifications
          */
         socket.on("joinRoom", ({ role, userId, groupId }) => {
+            socket.userId = userId; // store on socket
+            socket.userRole = role;
             if (role) socket.join(role);
             if (userId) socket.join(`user_${userId}`);
             if (groupId) socket.join(`group_${groupId}`);
 
             console.log(`Socket ${socket.id} joined rooms:`, { role, userId, groupId });
+        });
+
+        // Start conversation
+        socket.on("startConversation", async ({ receiverId }, callback) => {
+            try {
+                const senderId = socket.userId;
+                let conv = await Conversation.findOne({
+                    participants: { $all: [senderId, receiverId] },
+                });
+
+                if (!conv) {
+                    conv = await Conversation.create({
+                        participants: [senderId, receiverId],
+                    });
+                }
+
+                callback({ conversationId: conv._id });
+            } catch (err) {
+                console.error(err);
+                callback({ error: err.message });
+            }
+        });
+
+        //send message
+        socket.on("sendMessage", async ({ conversationId, receiverId,text }) => {
+            try {
+                const senderId = socket.userId;
+
+                const conversation = await Conversation.findById(conversationId);
+                if (!conversation || !conversation.participants.includes(senderId)) {
+                    return socket.emit("errorMessage", { message: "You are not part of this conversation" });
+                }
+
+                const message = await Message.create({
+                    conversation: conversationId,
+                    sender: senderId,
+                    text,
+                });
+
+                const payload = {
+                    _id: message._id,
+                    conversation: message.conversation,
+                    sender: {
+                        _id: senderId,
+                        name: socket.userName ||senderId,
+                        role: socket.userRole,
+                    },
+                    text: message.text,
+                    createdAt: message.createdAt,
+                };
+
+                // Emit to all participants
+                conversation.participants.forEach((p) => {
+                    io.to(`user_${p}`).emit("newMessage", payload);
+                });
+            } catch (err) {
+                console.error(err);
+                socket.emit("errorMessage", { message: err.message });
+            }
         });
 
         socket.on("disconnect", () => {
