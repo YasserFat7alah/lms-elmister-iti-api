@@ -11,19 +11,31 @@ const { authenticate, authorize } = authMiddleware;
 router.use(authenticate, authorize("teacher"));
 
 /* --- --- --- TEACHER ROUTES --- --- --- */
-router.patch("/me/video", 
+router.get("/dashboard",
+    teacherController.getDashboard
+);
+
+router.get("/dashboard/academic-chart",
+    teacherController.getAcademicChart
+);
+
+router.get("/dashboard/earnings-chart",
+    teacherController.getEarningsChart
+);
+
+router.patch("/me/video",
     multerMiddleware.single("video"),
     teacherController.uploadVideo
 );
 
-router.post("/me/certificates", 
-    multerMiddleware.single("image"), 
+router.post("/me/certificates",
+    multerMiddleware.single("image"),
     teacherController.addCertificate
 );
 
-router.delete("/me/certificates/:id", 
+router.delete("/me/certificates/:id",
     teacherController.deleteCertificate
 );
 /* --- --- --- --- --- --- --- --- --- --- */
 
-export {router as teacherRouter};
+export { router as teacherRouter };
