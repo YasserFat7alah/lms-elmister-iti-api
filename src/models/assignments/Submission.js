@@ -16,6 +16,7 @@ const SubmissionSchema = new Schema(
         },
 
         content: { type: String },
+
         file: {
             url: { type: String },
             publicId: { type: String },
@@ -23,12 +24,38 @@ const SubmissionSchema = new Schema(
         },
         
         grade: { type: Number },
+        
         feedback: { type: String },
 
         submittedAt: {
             type: Date,
             default: Date.now
         },
+
+        isLate: {
+            type: Boolean,
+            default: false
+        },
+
+        lateDays: {
+            type: Number,
+            default: 0
+        },
+
+        penaltyApplied: {
+            type: Number,
+            default: 0 
+        },
+
+        finalGrade: {
+            type: Number
+        },
+
+        status: {
+            type: String,
+            enum: ['draft', 'submitted', 'graded', 'late'],
+            default: 'draft'
+        }
     },
     { timestamps: true }
 );
