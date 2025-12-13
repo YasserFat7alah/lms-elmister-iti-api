@@ -18,7 +18,10 @@ router.get('/me/children', authenticate, getMyChildren);
 router.patch('/me', authenticate, upload.single('avatar'), validate(userUpdateSchema), updateMe);
 router.post('/me/avatar', authenticate, upload.single('avatar'), uploadAvatar);
 
-router.get('/', userController.getAll);
+router.delete('/admin/:id', authenticate, authorize('admin'), userController.deleteUser);
+router.patch('/admin/:id', authenticate, authorize('admin'), userController.updateUser);
+
+router.get('/', authenticate, authorize('admin'), userController.getAll);
 
 
 

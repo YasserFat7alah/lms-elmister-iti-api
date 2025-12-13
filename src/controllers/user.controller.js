@@ -61,6 +61,18 @@ class UserController {
     });
   });
 
+  /** Admin: Delete user */
+  deleteUser = asyncHandler(async (req, res) => {
+    await this.userService.deleteUser(req.params.id);
+    res.status(200).json({ success: true, message: "User deleted successfully" });
+  });
+
+  /** Admin: Update user */
+  updateUser = asyncHandler(async (req, res) => {
+    const updatedUser = await this.userService.updateUser(req.params.id, req.body);
+    res.status(200).json({ success: true, data: { user: updatedUser } });
+  });
+
   /** Get Public Teachers (Filtered & Paginated) */
   getPublicTeachers = asyncHandler(async (req, res) => {
     // Extract filters from Query

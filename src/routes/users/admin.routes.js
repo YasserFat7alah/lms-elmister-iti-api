@@ -9,6 +9,7 @@ const { authenticate, authorize } = authMiddleware;
 router.use(authenticate, authorize('admin'));
 
 router.use('/dashboard', adminController.getDashboard);
+router.get('/users/:id', adminController.getUserDetails);
 
 
 
