@@ -12,41 +12,50 @@ class AssignmentController {
      * @body { title, description, group, lesson, totalGrade, dueDate, file }
     */
     createAssignment = asyncHandler(async (req, res) => {
-        const teacherId = req.user._id;
-        const file = req.file ? req.file : null;
+    const teacherId = req.user._id;
+    const file = req.file ? req.file : null;
 
-        const { 
-            title, 
-            description, 
-            lesson,  
-            group ,
-            totalGrade, 
-            dueDate,
-            allowLateSubmission,
-            maxLateDays,
-            latePenaltyPerDay
-        } = req.body;
+    // Convert FormData strings to proper types
+    if (req.body.allowLateSubmission !== undefined) {
+        req.body.allowLateSubmission = req.body.allowLateSubmission === 'true';
+    }
+    if (req.body.totalGrade) req.body.totalGrade = Number(req.body.totalGrade);
+    if (req.body.latePenaltyPerDay) req.body.latePenaltyPerDay = Number(req.body.latePenaltyPerDay);
+    if (req.body.maxLateDays) req.body.maxLateDays = Number(req.body.maxLateDays);
 
-        const assignment = await this.assignmentService.createAssignment({
-            title, 
-            description, 
-            lesson, 
-            group ,
-            teacher: teacherId, 
-            totalGrade, 
-            dueDate,
-            allowLateSubmission,
-            maxLateDays,
-            latePenaltyPerDay,
-            file
-        });
+    const { 
+        title, 
+        description, 
+        lesson,
+        // Remove this: course,
+        group,
+        totalGrade, 
+        dueDate,
+        allowLateSubmission,
+        maxLateDays,
+        latePenaltyPerDay
+    } = req.body;
 
-        res.status(201).json({
-            success: true,
-            data: assignment
-        });
+    const assignment = await this.assignmentService.createAssignment({
+        title, 
+        description, 
+        lesson, 
+        // Remove this: course,
+        group,
+        teacher: teacherId, 
+        totalGrade, 
+        dueDate,
+        allowLateSubmission,
+        maxLateDays,
+        latePenaltyPerDay,
+        file
     });
 
+    res.status(201).json({
+        success: true,
+        data: assignment
+    });
+});
     /**
      * Get assignments of a group
      * @route GET api/v1/assignments/:groupId
@@ -126,6 +135,80 @@ class AssignmentController {
             data: assignment
         });
     });
+
+    updateAssignment = asyncHandler(async (req, res) => {
+        const teacherId = req.user._id;
+        const { assignmentId } = req.params;
+        const file = req.file ? req.file : null;
+
+        // Convert FormData strings to proper types
+        if (req.body.allowLateSubmission !== undefined) {
+            req.body.allowLateSubmission = req.body.allowLateSubmission === 'true';
+        }
+        if (req.body.totalGrade) req.body.totalGrade = Number(req.body.totalGrade);
+        if (req.body.latePenaltyPerDay) req.body.latePenaltyPerDay = Number(req.body.latePenaltyPerDay);
+        if (req.body.maxLateDays) req.body.maxLateDays = Number(req.body.maxLateDays);
+
+        const { 
+            title, 
+            description, 
+            totalGrade, 
+            dueDate,
+            allowLateSubmission,
+            maxLateDays,
+            latePenaltyPerDay
+        } = req.body;
+
+        const updateData = {};
+        if (title) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        if (totalGrade) updateData.totalGrade = totalGrade;
+        if (dueDate) updateData.dueDate = dueDate;
+        if (allowLateSubmission !== undefined) {
+            updateData.allowLateSubmission = allowLateSubmission;
+            
+            if (allowLateSubmission) {
+                if (latePenaltyPerDay !== undefined) updateData.latePenaltyPerDay = latePenaltyPerDay;
+                if (maxLateDays !== undefined) updateData.maxLateDays = maxLateDays;
+            } else {
+                // Remove late submission fields if disabled
+                updateData.latePenaltyPerDay = undefined;
+                updateData.maxLateDays = undefined;
+            }
+        }
+
+        const assignment = await this.assignmentService.updateAssignment(
+            assignmentId,
+            teacherId,
+            updateData,
+            file
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Assignment updated successfully",
+            data: assignment
+        });
+    });
+
+    /**
+     * Delete an assignment >>> Only the teacher who created it can delete
+     * @route DELETE api/v1/assignments/:assignmentId
+     * @auth teacher
+    */
+    deleteAssignment = asyncHandler(async (req, res) => {
+        const teacherId = req.user._id;
+        const { assignmentId } = req.params;
+
+        const result = await this.assignmentService.deleteAssignment(assignmentId, teacherId);
+
+        res.status(200).json({
+            success: true,
+            message: result.message
+        });
+    });
+
+    
 }
 
 export default AssignmentController;
