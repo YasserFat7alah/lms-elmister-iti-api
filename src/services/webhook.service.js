@@ -33,7 +33,7 @@ class WebhookService {
     async handleEvent(event) {
         try {
             console.log(`🔔 Event received: ${event.type}`); // LOG
-            
+
             switch (event.type) {
                 case "checkout.session.completed":
                     await this.handleCheckoutCompleted(event.data.object);
@@ -71,7 +71,19 @@ class WebhookService {
     async handleCheckoutCompleted(session) {
         // console.log("------------------------- CHECKOUT COMPLETED -----------------------------");
 
-        // 1. Retrieve Subscription
+        // 1. Validate Metadata (Guard against foreign/CLI events)
+        const { enrollmentId, parentId, studentId, groupId } = session.metadata || {};
+        if (!enrollmentId) {
+            console.log("ℹ️ Skipping checkout session: Missing enrollmentId in metadata.");
+            return;
+        }
+
+        // 2. Retrieve Subscription
+        if (!session.subscription) {
+            console.error("❌ Checkout session missing subscription ID.");
+            return;
+        }
+
         const subscription = await this.model.subscriptions.retrieve(session.subscription, {
             expand: ['latest_invoice']
         });
@@ -82,13 +94,6 @@ class WebhookService {
         }
 
         const invoice = subscription.latest_invoice;
-
-        // 2. Validate Metadata
-        const { enrollmentId, parentId, studentId, groupId } = session.metadata || {};
-        if (!enrollmentId) {
-            console.error("Missing enrollmentId in metadata");
-            return;
-        }
 
         // 3. Find Enrollment
         let enrollment = await Enrollment.findById(enrollmentId);
@@ -103,13 +108,13 @@ class WebhookService {
         enrollment.subscriptionId = subscription.id;
         enrollment.status = subscription.status;
         enrollment.paidAt = new Date();
-        
+
         // --- DATE LOGIC WITH FALLBACK (30 DAYS) ---
         const stripeStart = this.updateDate(subscription.current_period_start);
         const stripeEnd = this.updateDate(subscription.current_period_end);
 
         enrollment.currentPeriodStart = stripeStart || new Date(); // Fallback to now
-        
+
         // If Stripe returns null OR if we want to force 30 days logic:
         if (stripeEnd) {
             enrollment.currentPeriodEnd = stripeEnd;
@@ -118,10 +123,18 @@ class WebhookService {
             thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
             enrollment.currentPeriodEnd = thirtyDaysFromNow;
         }
-        
+
         enrollment.cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
         enrollment.cancelAt = this.updateDate(subscription.cancel_at);
         enrollment.canceledAt = this.updateDate(subscription.canceled_at);
+        enrollment.canceledAt = this.updateDate(subscription.canceled_at);
+
+        // Save Invoice Details
+        if (invoice) {
+            enrollment.lastInvoiceId = invoice.id;
+            enrollment.lastInvoiceUrl = invoice.hosted_invoice_url;
+        }
+
         await enrollment.save();
 
         /* --- B. UPDATE PARENT --- */
@@ -163,14 +176,22 @@ class WebhookService {
 
         const nextMonth = new Date();
         nextMonth.setDate(nextMonth.getDate() + 30);
-        
-        enrollment.currentPeriodEnd = this.updateDate(linePeriodEnd,nextMonth);
+
+        enrollment.currentPeriodEnd = this.updateDate(linePeriodEnd, nextMonth);
         enrollment.status = 'active';
+        enrollment.status = 'active';
+
+        // Save Invoice Details
+        if (invoice) {
+            enrollment.lastInvoiceId = invoice.id;
+            enrollment.lastInvoiceUrl = invoice.hosted_invoice_url;
+        }
+
         await enrollment.save();
         // console.log(`Enrollment Extended to: ${enrollment.currentPeriodEnd}`);
 
         // Pass subscription as object with ID for consistency
-        const subscription = { id: subscriptionId, currency: invoice.currency }; 
+        const subscription = { id: subscriptionId, currency: invoice.currency };
         await this.processFinancials(invoice, enrollment, subscription);
     }
 
@@ -178,7 +199,7 @@ class WebhookService {
      * HANDLER 3: Subscription Updates
      */
     async handleSubscriptionUpdate(subscription) {
-        
+
         const enrollment = await Enrollment.findOne({ subscriptionId: subscription.id });
         if (!enrollment) return;
 
@@ -195,7 +216,7 @@ class WebhookService {
      */
     async handleCheckoutCancelled(session) {
         if (session.mode !== 'subscription') return;
-        
+
         const { enrollmentId } = session.metadata || {};
         if (!enrollmentId) return;
 
@@ -216,8 +237,15 @@ class WebhookService {
      * @param subscription : 
      * @param fee : platform fee -fraction ( default: 0.1 )
      * */
-    async processFinancials(invoice, enrollment, subscription, fee=0.1) {
+    async processFinancials(invoice, enrollment, subscription, fee = 0.1) {
         try {
+            // --- IDEMPOTENCY CHECK ---
+            const existingInvoice = await Invoice.findOne({ stripeInvoiceId: invoice.id });
+            if (existingInvoice) {
+                console.log(`⚠️ Invoice ${invoice.id} already processed. Skipping financial linking.`);
+                return;
+            }
+
             const amountPaid = invoice.amount_paid / 100 || 0;
             const amountDue = invoice.amount_due / 100 || 0;
             const platformFee = Number((amountPaid * fee).toFixed(2));
@@ -227,7 +255,7 @@ class WebhookService {
             if (enrollment.teacher && teacherShare > 0) {
                 try {
                     await enrollmentService.creditTeacher(enrollment.teacher, teacherShare);
-                } catch (err) { 
+                } catch (err) {
                     // console.error("Error crediting teacher:", err.message);
                 }
             }
@@ -244,10 +272,10 @@ class WebhookService {
                 adjustedEnd.setDate(adjustedEnd.getDate() + 30);
                 dbPeriodEnd = adjustedEnd;
             }
-            
+
             // If we have subscription data (from checkout handler), prefer it
             if (subscription.current_period_end) {
-                 dbPeriodEnd = this.updateDate(subscription.current_period_end);
+                dbPeriodEnd = this.updateDate(subscription.current_period_end);
             }
 
             // Log Invoice

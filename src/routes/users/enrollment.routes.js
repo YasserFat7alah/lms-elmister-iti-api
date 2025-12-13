@@ -11,6 +11,15 @@ const { authenticate, authorize } = authMiddleware;
 router.use(authenticate);
 
 
+// Admin: Get all enrollments
+router.get("/", authorize("admin"), enrollmentController.getAll);
+
+// Admin: Delete enrollment
+router.delete("/admin/:enrollmentId", authorize("admin"), enrollmentController.adminDelete);
+
+// Admin: Update status
+router.patch("/:enrollmentId/status", authorize("admin"), enrollmentController.updateStatus);
+
 router.post("/checkout/:groupId", authorize("parent"), validate(enrollSchema),
   enrollmentController.enroll
 );

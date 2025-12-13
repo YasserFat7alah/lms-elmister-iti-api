@@ -102,6 +102,10 @@ const EnrollmentSchema = new Schema(
 
     canceledAt: { type: Date },
 
+    lastInvoiceUrl: { type: String },
+
+    lastInvoiceId: { type: String },
+
     charges: [ChargeSchema],
   },
   { timestamps: true }

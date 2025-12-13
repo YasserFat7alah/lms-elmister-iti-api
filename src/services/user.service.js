@@ -1,4 +1,5 @@
 import ParentProfile from "../models/users/ParentProfile.js";
+
 import mongoose from "mongoose";
 import StudentProfile from "../models/users/StudentProfile.js";
 import Enrollment from "../models/Enrollment.js";
@@ -408,6 +409,34 @@ class UserService extends BaseService {
     Object.keys(fullProfile).forEach(key => fullProfile[key] === undefined && delete fullProfile[key]);
 
     return fullProfile;
+  }
+  /**
+   * Admin: Delete User and related profile
+   * @param {string} userId
+   */
+  async deleteUser(userId) {
+    const user = await this.model.findById(userId);
+    if (!user) throw AppError.notFound("User not found");
+
+    // Delete related profile based on role
+    if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: userId });
+    else if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: userId });
+    else if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: userId });
+
+    // Delete the user
+    await this.model.findByIdAndDelete(userId);
+    return true;
+  }
+
+  /**
+   * Admin: Update User
+   * @param {string} userId
+   * @param {object} data
+   */
+  async updateUser(userId, data) {
+    const user = await this.model.findByIdAndUpdate(userId, data, { new: true, runValidators: true });
+    if (!user) throw AppError.notFound("User not found");
+    return this.sanitize(user);
   }
 }
 

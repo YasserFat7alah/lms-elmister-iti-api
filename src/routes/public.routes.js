@@ -9,9 +9,9 @@ const router = express.Router();
 router.get("/courses", courseController.getPublicCourses);
 router.get("/courses/:id", courseController.getCourseById);
 
-/* --- --- --- TEACHER ROUTES --- --- --- */
-router.get("/teachers", userController.getPublicTeachers);
-router.get("/users/:username", userController.getUserByUsername);
+/* --- --- --- USER ROUTES --- --- --- */
+router.get("/teachers", userController.getPublicTeachers); // teachers list
+router.get("/users/:username", userController.getUserByUsername); // user details
 
 
 export { router as publicRouter };

@@ -17,9 +17,9 @@ class EnrollmentController {
     const { studentId } = req.body;
     const { groupId } = req.params;
 
-    if(!studentId) throw AppError.badRequest("Student ID is required for enrollment");
-    if(!groupId) throw AppError.badRequest("Group ID is required");
-    
+    if (!studentId) throw AppError.badRequest("Student ID is required for enrollment");
+    if (!groupId) throw AppError.badRequest("Group ID is required");
+
     const data = await this.service.subscribe(user, studentId, groupId);
 
     res.status(201).json({
@@ -42,17 +42,36 @@ class EnrollmentController {
     });
   });
 
+  /** Get all enrollments (Admin) */
+  getAll = asyncHandler(async (req, res) => {
+    const { page, limit, status } = req.query;
+
+    // Build filter object
+    const filter = {};
+    if (status && status !== 'all') filter.status = status;
+
+    const result = await this.service.findAllEnrollments(filter, { page, limit });
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  });
+
   /** Parent cancels their enrollment (at period end) 
    * @route /api/v1/enrollments/:enrollmentId/cancel
    * @returns {Enrollment}
   */
   cancel = asyncHandler(async (req, res) => {
-    if (req.user.role !== "parent") {
-      throw AppError.forbidden("Only parents can cancel enrollments");
+    // Parent or Admin can cancel
+    if (req.user.role !== "parent" && req.user.role !== "admin") {
+      throw AppError.forbidden("Only parents or admins can cancel enrollments");
     }
 
-    const parentId = req.user._id || req.user.id;
-    const enrollment = await this.service.cancel(parentId, req.params.enrollmentId);
+    const userId = req.user._id || req.user.id;
+    const role = req.user.role;
+
+    const enrollment = await this.service.cancel(userId, req.params.enrollmentId, role);
 
     res.status(200).json({
       success: true,
@@ -63,6 +82,29 @@ class EnrollmentController {
       data: {
         enrollment,
       }
+    });
+  });
+
+  /** Admin: Update status */
+  updateStatus = asyncHandler(async (req, res) => {
+    const { status } = req.body;
+    const { enrollmentId } = req.params;
+
+    const updated = await this.service.updateStatus(enrollmentId, status);
+
+    res.status(200).json({
+      success: true,
+      data: updated
+    });
+  });
+
+  /** Admin: Delete enrollment */
+  adminDelete = asyncHandler(async (req, res) => {
+    await this.service.adminDelete(req.params.enrollmentId);
+
+    res.status(200).json({
+      success: true,
+      message: "Enrollment deleted successfully"
     });
   });
 
