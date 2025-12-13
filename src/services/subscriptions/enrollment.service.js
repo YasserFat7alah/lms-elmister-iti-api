@@ -28,7 +28,7 @@ class EnrollmentService extends BaseService {
     const parentId = parent._id || parent.id;
 
     // Vaidate data input
-    if (!studentId || !groupId ) {
+    if (!studentId || !groupId) {
       throw AppError.badRequest(
         "groupId, studentId are required!"
       );
@@ -38,22 +38,13 @@ class EnrollmentService extends BaseService {
     const group = await Group.findById(groupId).populate("courseId");
     if (!group) throw AppError.notFound("Group not found");
 
-    if (group.isFree) {
-      throw AppError.badRequest(
-        "Selected group is free and does not require a subscription"
-      );
-    }
-    if (!group.price || group.price <= 0) {
-      throw AppError.badRequest(
-        "Group price must be greater than zero for paid subscriptions"
-      );
-    }
+    // Checks for free/paid moved down to handle logic properly
 
     if (group.studentsCount >= group.capacity || group.status === "closed") {
       throw AppError.conflict("Group is full or closed for enrollments");
     }
 
-    
+
     // Validate student data
     const student = await User.findOne({ _id: studentId, role: "student" });
     if (!student) throw AppError.badRequest("Invalid student");
@@ -69,38 +60,83 @@ class EnrollmentService extends BaseService {
     let enrollment = await Enrollment.findOne({
       student: studentId,
       course: group.courseId._id,
-      group: groupId,
     });
     if (enrollment && enrollment.status === "active") {
       throw AppError.conflict(
         "This student already has an active subscription for this course"
       );
     }
+
+    // --- HANDLE FREE GROUPS ---
+    if (group.isFree || group.price === 0) {
+      if (!enrollment) {
+        enrollment = await Enrollment.create({
+          parent: parentId,
+          student: studentId,
+          teacher: group.teacherId,
+          group: groupId,
+          course: group.courseId._id,
+          status: 'active',
+          amount: 0,
+          currency: group.currency || "usd",
+          currentPeriodStart: new Date(),
+        });
+      } else {
+        // Reuse existing (incomplete/transferred) enrollment
+        enrollment.group = groupId; // Switch group
+        enrollment.teacher = group.teacherId;
+        enrollment.status = 'active';
+        enrollment.amount = 0;
+        enrollment.currentPeriodStart = new Date();
+        await enrollment.save();
+      }
+
+      await this.ensureStudentInGroup(groupId, studentId);
+
+      return {
+        url: null,
+        enrollment,
+        message: "Enrollment successful (Free Group)"
+      };
+    }
+
+    // --- PAID GROUPS CHECK ---
+    if (!group.price || group.price <= 0) {
+      throw AppError.badRequest("Group price must be greater than zero for paid subscriptions");
+    }
     const parentProfile = await this.getParentProfile(parentId);
     const stripeCustomerId = await paymentService.getCustomerId(parent, parentProfile);
     const stripePriceId = await paymentService.getPriceId(group);
-    
-    if(!enrollment) {
-    enrollment = await Enrollment.create({
-      parent: parentId,
-      student: studentId,
-      teacher: group.teacherId,
-      group: groupId,
-      course: group.courseId._id,
-      customerId: stripeCustomerId,
-      priceId: stripePriceId,
-      status: 'incomplete',
-      amount: group.price,
-      currency: group.currency || "usd",
-    });
-  }
-    
+
+    if (!enrollment) {
+      enrollment = await Enrollment.create({
+        parent: parentId,
+        student: studentId,
+        teacher: group.teacherId,
+        group: groupId,
+        course: group.courseId._id,
+        customerId: stripeCustomerId,
+        priceId: stripePriceId,
+        status: 'incomplete',
+        amount: group.price,
+        currency: group.currency || "usd",
+      });
+    } else {
+      // REUSE: Update existing enrollment with new group data
+      enrollment.group = groupId;
+      enrollment.teacher = group.teacherId;
+      enrollment.priceId = stripePriceId;
+      enrollment.amount = group.price;
+      enrollment.status = 'incomplete';
+      await enrollment.save();
+    }
+
     const session = await paymentService.createCheckoutSession({
       customerId: stripeCustomerId,
       priceId: stripePriceId,
       successUrl: `${CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${CLIENT_URL}/payment/canceled`,
-      metadata: { 
+      metadata: {
         enrollmentId: enrollment._id.toString(),
         groupId: groupId.toString(),
         studentId: studentId.toString(),
@@ -110,11 +146,10 @@ class EnrollmentService extends BaseService {
       },
     });
 
-    // Store checkout session ID temporarily (will be replaced with subscription ID on completion)
+    // Store checkout session ID
     enrollment.checkoutSessionId = session.id;
-    enrollment.subscriptionId = enrollment.subscriptionId || null;
     await enrollment.save()
-    
+
     return {
       url: session.url,
       enrollment,
@@ -122,13 +157,13 @@ class EnrollmentService extends BaseService {
   }
 
   /** Cancel an enrollment (at period end) */
-  async cancel(parentId, enrollmentId) {
+  async cancel(userId, enrollmentId, role = "parent") {
     const enrollment = await Enrollment.findById(enrollmentId);
     if (!enrollment) {
       throw AppError.notFound("Enrollment not found");
     }
 
-    if (enrollment.parent.toString() !== parentId.toString()) {
+    if (role === "parent" && enrollment.parent.toString() !== userId.toString()) {
       throw AppError.forbidden("You do not own this enrollment");
     }
 
@@ -156,11 +191,11 @@ class EnrollmentService extends BaseService {
     return enrollment;
   }
 
-   /** List all enrollments for a parent
-   * @param {string} parentId : Authenticated Parent
-   * @returns {Enrollment[]}
-   * */
-   async listByParent(parentId) {
+  /** List all enrollments for a parent
+  * @param {string} parentId : Authenticated Parent
+  * @returns {Enrollment[]}
+  * */
+  async listByParent(parentId) {
     const enrollments = this.model.find({ parent: parentId })
       .sort("-createdAt")
       .populate("group", "title startingDate startingTime")
@@ -169,17 +204,50 @@ class EnrollmentService extends BaseService {
     return enrollments;
   }
 
+  /**
+   * Find all enrollments with pagination and filtering for admin
+   * @param {object} filter - Filter options
+   * @param {object} options - Pagination (page, limit)
+   */
+  async findAllEnrollments(filter = {}, options = {}) {
+    const { page = 1, limit = 10 } = options;
+    const skip = (page - 1) * limit;
+
+    const enrollments = await this.model.find(filter)
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate("student", "name email username _id")
+      .populate("parent", "name email username _id")
+      .populate("teacher", "name email username _id")
+      .populate({
+        path: "group",
+        select: "title courseId type _id",
+        populate: { path: "courseId", select: "title _id" },
+      });
+
+    const total = await this.model.countDocuments(filter);
+
+    return {
+      enrollments,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit),
+    };
+  }
+
   /** List all enrollments for a student
    * @param {string} studentId
    * @returns {Enrollment[]}
    * */
   async listByStudent(studentId) {
-    const enrollments = await this.model.find({ 
-            student: studentId, 
-            status: { $in: ['active', 'trialing'] } 
-        })
-        .populate('group')
-        .select('group course status');
+    const enrollments = await this.model.find({
+      student: studentId,
+      status: { $in: ['active', 'trialing'] }
+    })
+      .populate('group')
+      .select('group course status');
 
     return enrollments;
   }
@@ -205,12 +273,12 @@ class EnrollmentService extends BaseService {
    * @param {string} studentId
    * */
   async ensureStudentInGroup(groupId, studentId) {
-   await Group.updateOne(
-        { _id: groupId, students: { $ne: studentId } }, 
-        { 
-            $push: { students: studentId },
-            $inc: { studentsCount: 1 } 
-        }
+    await Group.updateOne(
+      { _id: groupId, students: { $ne: studentId } },
+      {
+        $push: { students: studentId },
+        $inc: { studentsCount: 1 }
+      }
     );
   }
 
@@ -223,7 +291,7 @@ class EnrollmentService extends BaseService {
   }
   /* --- --- --- WEBHOOK HANDLERS --- --- --- */
 
-  
+
 
   async markSubscriptionCancelled(stripeSubscription) {
     const enrollment = await Enrollment.findOne({
@@ -235,6 +303,32 @@ class EnrollmentService extends BaseService {
     enrollment.canceledAt = new Date();
     enrollment.cancelAtPeriodEnd = true;
     await enrollment.save();
+  }
+
+  /**
+   * Admin: Update enrollment status
+   * @param {string} id - Enrollment ID
+   * @param {string} status - New status
+   */
+  async updateStatus(id, status) {
+    this._validateId(id);
+    const enrollment = await this.model.findById(id);
+    if (!enrollment) throw AppError.notFound("Enrollment not found");
+
+    enrollment.status = status;
+    await enrollment.save();
+    return enrollment;
+  }
+
+  /**
+   * Admin: Delete enrollment
+   * @param {string} id - Enrollment ID
+   */
+  async adminDelete(id) {
+    this._validateId(id);
+    const deleted = await this.model.findByIdAndDelete(id);
+    if (!deleted) throw AppError.notFound("Enrollment not found");
+    return deleted;
   }
 
   async handleInvoicePaid(invoice) {
@@ -286,7 +380,7 @@ class EnrollmentService extends BaseService {
     teacherProfile.balance += amount;
     await teacherProfile.save();
   }
-  
+
 }
 
 export default new EnrollmentService(Enrollment);

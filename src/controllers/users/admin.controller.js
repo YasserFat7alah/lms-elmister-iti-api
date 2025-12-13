@@ -30,6 +30,12 @@ class AdminController {
     });
   });
 
+  /** Get detailed user info */
+  getUserDetails = asyncHandler(async (req, res) => {
+    const details = await this.service.getUserDetails(req.params.id);
+    res.status(200).json({ success: true, data: { user: details } });
+  });
+
 }
 
 
