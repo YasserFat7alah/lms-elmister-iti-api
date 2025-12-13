@@ -3,6 +3,7 @@ import AppError from "../../utils/app.error.js";
 import cloudinaryService from "../helpers/cloudinary.service.js";
 import Group from "../../models/Group.js";
 import Lesson from "../../models/Lesson.js";
+import mongoose from "mongoose";
 
 
 class AssignmentService extends BaseService {
@@ -104,6 +105,32 @@ class AssignmentService extends BaseService {
 
         return assignment;
     }
+
+    async getAssignmentsForStudent(studentId) {
+    // 1. Get all courses or groups the student is enrolled in
+    const Enrollment = mongoose.model("Enrollment"); // assuming you have an Enrollment model
+    const enrollments = await Enrollment.find({ student: studentId }).populate("group course");
+
+    const groupIds = enrollments.map(e => e.group?._id).filter(Boolean);
+    const courseIds = enrollments.map(e => e.course?._id).filter(Boolean);
+
+    // 2. Find assignments where group or course matches
+    const assignments = await this.model
+        .find({ 
+            $or: [
+                { group: { $in: groupIds } },
+                { course: { $in: courseIds } }
+            ],
+            status: "active"
+        })
+        .populate("group", "title")
+        .populate("lesson", "title")
+        .populate("course", "title")
+        .populate("teacher", "name email")
+        .sort({ dueDate: 1 });
+
+    return assignments;
+}
 }
 
 export default AssignmentService;

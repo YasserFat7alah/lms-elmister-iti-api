@@ -12,14 +12,33 @@ class AssignmentController {
      * @body { title, description, group, lesson, totalGrade, dueDate, file }
     */
     createAssignment = asyncHandler(async (req, res) => {
-
         const teacherId = req.user._id;
         const file = req.file ? req.file : null;
 
-        const { title, description, group, lesson, totalGrade, dueDate } = req.body;
+        const { 
+            title, 
+            description, 
+            lesson,  
+            group ,
+            totalGrade, 
+            dueDate,
+            allowLateSubmission,
+            maxLateDays,
+            latePenaltyPerDay
+        } = req.body;
 
         const assignment = await this.assignmentService.createAssignment({
-            title, description, group, lesson, teacher: teacherId, totalGrade, dueDate, file
+            title, 
+            description, 
+            lesson, 
+            group ,
+            teacher: teacherId, 
+            totalGrade, 
+            dueDate,
+            allowLateSubmission,
+            maxLateDays,
+            latePenaltyPerDay,
+            file
         });
 
         res.status(201).json({
@@ -78,6 +97,34 @@ class AssignmentController {
                 success: true,
                 data: assignment
             });
+    });
+
+
+     // Get all assignments for logged-in student
+    getStudentAssignments = asyncHandler(async (req, res) => {
+        const studentId = req.user._id;
+
+        const assignments = await this.assignmentService.getAssignmentsForStudent(studentId);
+
+        res.status(200).json({
+            success: true,
+            data: assignments
+        });
+    });
+
+    // Optional: Get assignment details (if student wants single assignment view)
+    getAssignmentDetails = asyncHandler(async (req, res) => {
+        const { assignmentId } = req.params;
+        const studentId = req.user._id;
+
+        // Optional: check enrollment in the assignment's group or course
+        const assignment = await this.assignmentService.getAssignmentById(assignmentId);
+
+        // TODO: optionally check if student is enrolled
+        res.status(200).json({
+            success: true,
+            data: assignment
+        });
     });
 }
 

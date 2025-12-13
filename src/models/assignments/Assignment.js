@@ -44,11 +44,35 @@ const AssignmentSchema = new Schema(
       type: Date,
       required: true
     },
+
+
     file: {
       url: { type: String },
       publicId: { type: String },
       type: { type: String, default: "raw" }
+    },
+
+    allowLateSubmission: {
+      type: Boolean,
+      default: false
+    },
+
+    latePenaltyPerDay: {
+      type: Number,
+      default: 0
+    },
+
+    maxLateDays: {
+      type: Number,
+      default: 7
+    },
+    
+    status: {
+      type: String,
+      enum: ['active', 'archived', 'draft'],
+      default: 'active'
     }
+
   },
   { timestamps: true }
 );

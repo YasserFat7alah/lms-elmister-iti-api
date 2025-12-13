@@ -17,8 +17,16 @@ const { authenticate, authorize } = auth;
 const assignmentService = new AssignmentService(Assignment);
 const assignmentController = new AssignmentController(assignmentService);
 
+// const studentAssignmentController = new studentAssignmentController(assignmentService);
+
 //..................................Protected routes.................................
 router.use(authenticate);
+
+// Student routes first
+router.get("/my-assignments", assignmentController.getStudentAssignments);
+router.get("/:assignmentId", isEnrolled(), assignmentController.getAssignmentDetails);
+
+
 
 // Create a new assignment
 router.post("/",authorize("teacher"), upload, validate(assignmentSchema), assignmentController.createAssignment);
@@ -31,5 +39,6 @@ router.get("/lesson/:lessonId",isEnrolled(), assignmentController.getAssignments
 
 // Get assignment by ID (teacher, student, parent of enrolled child)
 router.get("/:assignmentId", isEnrolled(), assignmentController.getAssignmentById);
+
 
 export { router as assignmentRouter };
