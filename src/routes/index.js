@@ -16,6 +16,8 @@ import { assignmentRouter } from "./assignments/assignment.routes.js";
 import { submissionRouter } from "./assignments/submission.routes.js";
 import { notificationRouter } from "./notification.routes.js";
 import { cloudinaryRouter } from "./helpers/cloudinary.routes.js";
+import newsletterRouter from "./newsletter.routes.js";
+import ticketRouter from "./ticket.routes.js";
 import { chatRouter } from "./chat.routes.js";
 
 
@@ -34,6 +36,8 @@ router.use("/enrollments", enrollmentRouter);
 router.use("/payouts", payoutRouter);
 router.use("/reviews", reviewRouter);
 router.use("/comments", commentRouter);
+router.use("/newsletter", newsletterRouter); // Added
+router.use("/tickets", ticketRouter); // Added
 
 /* --- --- --- COURSE ENDPOINTS --- --- --- */
 router.use("/courses", courseRouter);

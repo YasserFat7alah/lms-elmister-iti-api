@@ -161,11 +161,7 @@ class CourseService extends BaseService {
             });
         }
 
-        const filtersData = filterStats.length > 0 ? {
-            subjects: filterStats[0].subjects.sort(),
-            gradeLevels: filterStats[0].gradeLevels.sort(),
-            languages: filterStats[0].languages.sort()
-        } : { subjects: [], gradeLevels: [], languages: [] };
+
 
         // Post-processing: Map teacherId to teacher and Ensure Avatar URL
         const mappedCourses = courses.map(course => {
