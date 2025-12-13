@@ -16,4 +16,8 @@ export const assignmentSchema = joi.object({
         "date.greater": "Due date must be in the future",
     }),
     
+    allowLateSubmission: joi.boolean().optional(),
+    maxLateDays: joi.number().optional().min(0),
+    latePenaltyPerDay: joi.number().optional().min(0).max(100),
+
 }).or("group", "lesson");

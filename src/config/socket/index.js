@@ -15,7 +15,7 @@ let io;
  */
 export function initSocket(server, options = {}) {
     io = new Server(server, {
-        cors: { 
+        cors: {
             origin: options.frontendOrigin || ["http://localhost:3000", "http://localhost:3001"],
             credentials: true,
             methods: ["GET", "POST"]
@@ -32,15 +32,15 @@ export function initSocket(server, options = {}) {
         try {
             const token = socket.handshake.auth?.token;
             console.log('[Socket Auth] Token present:', !!token);
-            
+
             if (!token) {
                 console.log('[Socket Auth] ❌ No token provided');
                 return next(new Error("Unauthorized"));
             }
-            
+
             const payload = authService.verifyToken(token, JWT_SECRET);
             console.log('[Socket Auth] ✅ Authenticated user:', payload.id, payload.name || 'Name not in token');
-            
+
             socket.userId = payload.id;
             socket.userName = payload.name;
             socket.userRole = payload.role;
@@ -60,22 +60,22 @@ export function initSocket(server, options = {}) {
         socket.on("joinRoom", ({ role, userId, groupId }) => {
             socket.userId = userId;
             socket.userRole = role;
-            
+
             if (role) {
                 socket.join(role);
                 console.log(`[Socket] 📂 Joined role room: ${role}`);
             }
-            
+
             if (userId) {
                 const roomName = `user_${userId}`;
                 socket.join(roomName);
                 console.log(`[Socket] ✅ Joined user room: ${roomName} | Socket: ${socket.id}`);
-                
+
                 // ✅ Verify room membership
                 const rooms = Array.from(socket.rooms);
                 console.log(`[Socket] 📋 All rooms for socket ${socket.id}:`, rooms);
             }
-            
+
             if (groupId) {
                 socket.join(`group_${groupId}`);
                 console.log(`[Socket] 📂 Joined group room: group_${groupId}`);
@@ -121,9 +121,9 @@ export function initSocket(server, options = {}) {
                     console.error('[Socket] ❌ Conversation not found:', conversationId);
                     return socket.emit("errorMessage", { message: "Conversation not found", conversationId });
                 }
-                
+
                 console.log('[Socket] 📋 Conversation participants:', conversation.participants.map(p => String(p)));
-                
+
                 // Compare by string to handle ObjectId vs string mismatch
                 if (!senderId) {
                     console.error('[Socket] ❌ Socket had no authenticated userId:', socket.id);
@@ -183,20 +183,20 @@ export function initSocket(server, options = {}) {
 
                 // ✅ CRITICAL: Emit to ALL participants
                 console.log('[Socket] 🎯 Emitting to participants:', conversation.participants);
-                
+
                 let emittedCount = 0;
                 conversation.participants.forEach((participantId) => {
                     const roomName = `user_${participantId}`;
-                    
+
                     // Get all sockets in this room
                     const socketsInRoom = io.sockets.adapter.rooms.get(roomName);
-                    console.log(`[Socket] 📡 Room ${roomName} has ${socketsInRoom?.size || 0} socket(s):`, 
+                    console.log(`[Socket] 📡 Room ${roomName} has ${socketsInRoom?.size || 0} socket(s):`,
                         socketsInRoom ? Array.from(socketsInRoom) : 'No sockets');
-                    
+
                     // Emit to the room
                     io.to(roomName).emit("newMessage", payload);
                     emittedCount++;
-                    
+
                     console.log(`[Socket] ✅ Emitted "newMessage" to room: ${roomName}`);
                 });
 
@@ -242,18 +242,18 @@ export function getIo() {
  */
 export async function emitNotification({ receiverRole, userId = null, groupId = null, notification }) {
     if (!io) throw new Error("Socket.io not initialized");
-    
+
     if (receiverRole) {
         io.to(receiverRole).emit("notification", notification);
         console.log(`[Notification] 📢 Emitted to role: ${receiverRole}`);
     }
-    
+
     if (userId) {
         const roomName = `user_${userId}`;
         io.to(roomName).emit("notification", notification);
         console.log(`[Notification] 📢 Emitted to user: ${roomName}`);
     }
-    
+
     if (groupId) {
         io.to(`group_${groupId}`).emit("notification", notification);
         console.log(`[Notification] 📢 Emitted to group: ${groupId}`);
