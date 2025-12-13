@@ -24,13 +24,19 @@ const lessonController = new LessonController(lessonService)
 /*---------------------------- routes (all routes are protected)----------------------------*/
 router.use(authenticate);
 
+router.get("/", authorize("teacher", "admin", "student","parent"), lessonController.getAllMyLessons);
+
+
 // create lesson (Schedule or Content)
 router.post("/", authorize("teacher", "admin"), uploadFiles, validate(createLessonSchema), lessonController.createLesson);
 
 // Mark Attendance for a specific lesson
 router.post("/:id/attendance", authorize("teacher", "admin"), lessonController.markAttendance);
 
+// Get Single Lesson
 router.get("/:id", authorize("teacher", "admin", "student"), lessonController.getLessonById);
+
+// Get Lessons by Group (Old logic - kept for compatibility)
 router.get("/group/:groupId", authorize("teacher", "admin", "student"), lessonController.getLessonsByGroup);
 
 // add lesson matrial
@@ -38,6 +44,7 @@ router.post("/:id/materials", authorize("teacher", "admin"), lessonController.ad
 
 // delete lesson material
 router.delete("/:id/materials/:materialId", authorize("teacher", "admin"), lessonController.deleteLessonMaterial);
+
 // update a lesson
 router.patch("/:id", authorize("teacher", "admin"), uploadFiles, validate(updateLessonSchema), lessonController.updateLesson);
 
@@ -50,7 +57,7 @@ router.delete("/:id/video", authorize("teacher", "admin"), lessonController.dele
 // Delete document[] from a lesson
 router.delete("/:id/document/:docId", authorize("teacher", "admin"), lessonController.deleteDocument);
 
-// reorder lessons (Legacy / Optional if using Calendar)
+// reorder lessons
 router.patch("/reorder/:groupId", authorize("teacher", "admin"), lessonController.reorderLessons);
 
 export { router as lessonRouter };
