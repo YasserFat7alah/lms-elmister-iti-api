@@ -1,4 +1,7 @@
 import asyncHandler from "express-async-handler";
+import Group from "../models/Group.js"; 
+import Lesson from "../models/Lesson.js";
+import ParentProfile from "../models/users/ParentProfile.js";
 
 class LessonController {
     constructor(lessonService) {
@@ -6,7 +9,7 @@ class LessonController {
     }
 
     /**
-     * Create a new Lesson (Schedule or Content)
+     * Create a new Lesson (Schedule or Content)    
      * @route POST /api/v1/lessons
      */
     createLesson = asyncHandler(async (req, res) => {
@@ -139,7 +142,65 @@ getLessonById = asyncHandler(async (req, res) => {
             data: lesson,
         });
     });
+ 
+ 
+/**
+     * Get All Lessons for Current User (Teacher or Student)
+     * @route GET /api/v1/lessons
+     */
+getAllMyLessons = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    const role = req.user.role;
+    let query = {};
+    if (role === 'teacher') {
+        const myGroups = await Group.find({ teacherId: userId }).select('_id');
+        const groupIds = myGroups.map(g => g._id);
+        query = { groupId: { $in: groupIds } };
+    
+    } else if (role === 'student') {
+        const myGroups = await Group.find({ students: userId }).select('_id');
+        const groupIds = myGroups.map(g => g._id);
+        query = { groupId: { $in: groupIds } };
+    
+    } else if (role === 'parent') {
+        const parentProfile = await ParentProfile.findOne({ user: userId });
+                
+        if (!parentProfile || !parentProfile.children || parentProfile.children.length === 0) {
+            console.log(" No children found in profile.");
+            return res.status(200).json({ success: true, data: [] });
+        }
+        const childrenIds = parentProfile.children.map(child => child.toString());
+        const childrenGroups = await Group.find({ 
+            students: { $in: parentProfile.children } 
+        }).select('_id title students');
+        
+        if (childrenGroups.length > 0) {
+            console.log("First Group Students Sample:", childrenGroups[0].students);
+        }
 
+        const groupIds = childrenGroups.map(g => g._id);
+        query = { groupId: { $in: groupIds } };
+    }
+    const lessons = await Lesson.find(query)
+        .populate('groupId', 'title')
+        .sort({ date: 1, startTime: 1 });
+    res.status(200).json({
+        success: true,
+        data: lessons
+    });
+});
+
+
+
+
+
+
+
+    
+    
+    
+    
+    
     /**
      * Mark Attendance
      * @route POST /api/v1/lessons/:id/attendance
