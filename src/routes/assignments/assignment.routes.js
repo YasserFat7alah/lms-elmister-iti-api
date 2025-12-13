@@ -9,36 +9,36 @@ import multer from "../../middlewares/multer.middleware.js";
 import isEnrolled from "../../middlewares/isEnrolled.middleware.js";
 
 const router = express.Router();
-//.............................................Middlewares......................................
+
+// Middlewares
 const upload = multer.single('document'); 
 const { authenticate, authorize } = auth;
 
-//.............................................Instances.........................................
+// Instances
 const assignmentService = new AssignmentService(Assignment);
 const assignmentController = new AssignmentController(assignmentService);
 
-// const studentAssignmentController = new studentAssignmentController(assignmentService);
-
-//..................................Protected routes.................................
+// Protected routes
 router.use(authenticate);
 
-// Student routes first
+// ===================== Student routes =====================
 router.get("/my-assignments", assignmentController.getStudentAssignments);
-router.get("/:assignmentId", isEnrolled(), assignmentController.getAssignmentDetails);
 
+// ===================== Static routes for group & lesson =====================
+router.get("/group/:groupId", isEnrolled(), assignmentController.getAssignmentsByGroup);
+router.get("/lesson/:lessonId", isEnrolled(), assignmentController.getAssignmentsByLesson);
 
+// ===================== Assignment CRUD (Teacher) =====================
+// Create assignment
+router.post("/", authorize("teacher"), upload, validate(assignmentSchema), assignmentController.createAssignment);
 
-// Create a new assignment
-router.post("/",authorize("teacher"), upload, validate(assignmentSchema), assignmentController.createAssignment);
+// Update assignment (must be before dynamic :assignmentId)
+router.put("/:assignmentId", authorize("teacher"), upload, assignmentController.updateAssignment);
 
-// Get all assignments by group (teacher, student, parent of enrolled child)
-router.get("/group/:groupId",isEnrolled(), assignmentController.getAssignmentsByGroup);
+// Delete assignment (must be before dynamic :assignmentId)
+router.delete("/:assignmentId", authorize("teacher"), assignmentController.deleteAssignment);
 
-// Get all assignments by lesson (teacher, student, parent of enrolled child)
-router.get("/lesson/:lessonId",isEnrolled(), assignmentController.getAssignmentsByLesson);
-
-// Get assignment by ID (teacher, student, parent of enrolled child)
+// Get single assignment (keep this last!)
 router.get("/:assignmentId", isEnrolled(), assignmentController.getAssignmentById);
-
 
 export { router as assignmentRouter };
