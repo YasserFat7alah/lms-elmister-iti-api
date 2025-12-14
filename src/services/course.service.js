@@ -133,21 +133,13 @@ class CourseService extends BaseService {
 
         if (populate) query.populate(populate);
 
-        // 4. Execute Query & Count & Filters
-        const [courses, total, filterStats] = await Promise.all([
+        // 4. Execute Query & Count - AND Aggregate Filters
+        const [courses, total, distinctSubjects, distinctGrades, distinctLanguages] = await Promise.all([
             query,
             this.model.countDocuments(filters),
-            this.model.aggregate([
-                { $match: { status: 'published' } },
-                {
-                    $group: {
-                        _id: null,
-                        subjects: { $addToSet: "$subject" },
-                        gradeLevels: { $addToSet: "$gradeLevel" },
-                        languages: { $addToSet: "$courseLanguage" }
-                    }
-                }
-            ])
+            this.model.distinct('subject', { status: 'published' }),
+            this.model.distinct('gradeLevel', { status: 'published' }),
+            this.model.distinct('courseLanguage', { status: 'published' })
         ]);
 
         if (calculatePrice && courses.length > 0) {
@@ -161,7 +153,11 @@ class CourseService extends BaseService {
             });
         }
 
-
+        const filtersData = {
+            subjects: (distinctSubjects || []).sort(),
+            gradeLevels: (distinctGrades || []).sort(),
+            languages: (distinctLanguages || []).sort()
+        };
 
         // Post-processing: Map teacherId to teacher and Ensure Avatar URL
         const mappedCourses = courses.map(course => {
@@ -180,8 +176,12 @@ class CourseService extends BaseService {
             total,
             page: parseInt(page),
             pages: Math.ceil(total / limit),
-            filters: filtersData,
-            data: mappedCourses
+            data: courses,
+            filters: {
+                subjects: distinctSubjects.sort(),
+                gradeLevels: distinctGrades.sort((a, b) => a - b), // Numeric sort if possible
+                languages: distinctLanguages.sort()
+            }
         };
     }
 
