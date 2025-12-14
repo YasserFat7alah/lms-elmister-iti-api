@@ -1,6 +1,8 @@
 import asyncHandler from "express-async-handler";
 import AppError from "../utils/app.error.js";
 import enrollmentService from "../services/subscriptions/enrollment.service.js";
+import ParentProfile from "../models/users/ParentProfile.js";
+import mongoose from "mongoose";
 
 class EnrollmentController {
   constructor(service) {
@@ -42,6 +44,51 @@ class EnrollmentController {
     });
   });
 
+  /** Get enrollments for a specific student (parent viewing their child's enrollments) */
+  getByStudent = asyncHandler(async (req, res) => {
+    const { studentId } = req.params;
+    const parentId = req.user._id || req.user.id;
+
+    // Verify user is a parent
+    if (req.user.role !== "parent") {
+      throw AppError.forbidden("Only parents can view student enrollments");
+    }
+
+    // Verify the student belongs to this parent
+    const parentProfile = await ParentProfile.findOne({ user: parentId });
+
+    if (!parentProfile) {
+      throw AppError.notFound("Parent profile not found");
+    }
+
+    // Check if student belongs to parent - use proper ObjectId comparison
+    const studentObjectId = typeof studentId === 'string'
+      ? new mongoose.Types.ObjectId(studentId)
+      : studentId;
+
+    const studentBelongsToParent = parentProfile.children.some(
+      (child) => {
+        const childObjId = child instanceof mongoose.Types.ObjectId
+          ? child
+          : new mongoose.Types.ObjectId(child);
+        return childObjId.equals(studentObjectId);
+      }
+    );
+
+    if (!studentBelongsToParent) {
+      throw AppError.forbidden("You can only view enrollments for your own children");
+    }
+
+    const enrollments = await this.service.listByStudent(studentId);
+
+    res.status(200).json({
+      success: true,
+      message: "Student enrollments fetched successfully",
+      count: enrollments.length,
+      data: enrollments,
+    });
+  });
+
   /** Get all enrollments (Admin) */
   getAll = asyncHandler(async (req, res) => {
     const { page, limit, status } = req.query;
@@ -79,6 +126,26 @@ class EnrollmentController {
         enrollment.cancelAtPeriodEnd === true
           ? "Enrollment will be cancelled at the end of the billing period."
           : "Enrollment cancelled.",
+      data: {
+        enrollment,
+      }
+    });
+  });
+
+  /** Renew an enrollment (remove cancel_at_period_end) */
+  renew = asyncHandler(async (req, res) => {
+    if (req.user.role !== "parent" && req.user.role !== "admin") {
+      throw AppError.forbidden("Only parents or admins can renew enrollments");
+    }
+
+    const userId = req.user._id || req.user.id;
+    const role = req.user.role;
+
+    const enrollment = await this.service.renew(userId, req.params.enrollmentId, role);
+
+    res.status(200).json({
+      success: true,
+      message: "Subscription renewed successfully. It will continue after the current period.",
       data: {
         enrollment,
       }
