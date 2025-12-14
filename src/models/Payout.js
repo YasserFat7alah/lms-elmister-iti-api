@@ -58,6 +58,14 @@ const PayoutSchema = new Schema(
     rejectedAt: {
       type: Date,
     },
+
+    transactionId: {
+      type: String, // Stripe Transfer ID (tr_...)
+    },
+
+    transactionUrl: {
+      type: String, // Link to Stripe Dashboard
+    },
   },
   { timestamps: true }
 );

@@ -7,6 +7,7 @@ import { CLIENT_URL } from "../../utils/constants.js";
 /* --- --- --- MODELS --- --- --- */
 import User from "../../models/users/User.js";
 import Group from "../../models/Group.js";
+import Course from "../../models/Course.js";
 import Enrollment from "../../models/Enrollment.js";
 import ParentProfile from "../../models/users/ParentProfile.js";
 import StudentProfile from "../../models/users/StudentProfile.js";
@@ -273,13 +274,42 @@ class EnrollmentService extends BaseService {
    * @param {string} studentId
    * */
   async ensureStudentInGroup(groupId, studentId) {
-    await Group.updateOne(
+    const result = await Group.updateOne(
       { _id: groupId, students: { $ne: studentId } },
       {
         $push: { students: studentId },
         $inc: { studentsCount: 1 }
       }
     );
+
+    if (result.modifiedCount > 0) {
+      const group = await Group.findById(groupId).select("courseId");
+      if (group && group.courseId) {
+        await Course.findByIdAndUpdate(group.courseId, { $inc: { totalStudents: 1 } });
+      }
+    }
+  }
+
+  /**
+   * Remove student from group and decrement counts
+   * @param {string} groupId 
+   * @param {string} studentId 
+   */
+  async removeStudentFromGroup(groupId, studentId) {
+    const result = await Group.updateOne(
+      { _id: groupId, students: studentId },
+      {
+        $pull: { students: studentId },
+        $inc: { studentsCount: -1 }
+      }
+    );
+
+    if (result.modifiedCount > 0) {
+      const group = await Group.findById(groupId).select("courseId");
+      if (group && group.courseId) {
+        await Course.findByIdAndUpdate(group.courseId, { $inc: { totalStudents: -1 } });
+      }
+    }
   }
 
   /** Format Stripe Date
@@ -303,6 +333,11 @@ class EnrollmentService extends BaseService {
     enrollment.canceledAt = new Date();
     enrollment.cancelAtPeriodEnd = true;
     await enrollment.save();
+
+    // Remove student from group immediately if status is canceled
+    if (enrollment.group && enrollment.student) {
+      await this.removeStudentFromGroup(enrollment.group, enrollment.student);
+    }
   }
 
   /**

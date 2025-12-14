@@ -34,7 +34,7 @@ class PayoutController {
       success: true,
       message: "Payouts fetched successfully",
       count: payouts.length,
-      data: {payouts},
+      data: { payouts },
     });
   });
 
@@ -57,11 +57,34 @@ class PayoutController {
     }
 
     const adminId = req.user._id || req.user.id;
-    const payout = await this.service.updateStatus(req.params.payoutId, adminId, req.body);
+    const { status, note } = req.body;
+    const payout = await this.service.updateStatus(req.params.payoutId, adminId, status, note);
 
     res.status(200).json({
       success: true,
       payout,
+    });
+  });
+
+  /* --- --- --- STRIPE ONBOARDING --- --- --- */
+
+  onboard = asyncHandler(async (req, res) => {
+    const teacherId = req.user._id || req.user.id;
+    const accountId = await this.service.createConnectAccount(teacherId, req.user.email);
+    const link = await this.service.createAccountLink(accountId);
+
+    res.status(200).json({
+      success: true,
+      url: link
+    });
+  });
+
+  checkOnboarding = asyncHandler(async (req, res) => {
+    const teacherId = req.user._id || req.user.id;
+    const status = await this.service.getOnboardingStatus(teacherId);
+    res.status(200).json({
+      success: true,
+      status
     });
   });
 }

@@ -9,12 +9,12 @@ const router = express.Router();
 router.use(auth.authenticate);
 
 /* --- --- --- PAYOUT ROUTES --- --- --- */
-router.post("/claim",
+router.post("/request",
   auth.authorize("teacher"), validate(payoutRequestSchema), payoutController.requestPayout);                     // request payouts
-router.get("/me", auth.authorize("teacher"), payoutController.getMyPayouts);      // list my payouts <teacher>
+router.get("/my-payouts", auth.authorize("teacher"), payoutController.getMyPayouts);      // list my payouts <teacher>
 
 router.get("/", auth.authorize("admin"), payoutController.adminList);             // list all payouts <admin>
-router.patch( "/:payoutId", auth.authorize("admin"), payoutController.adminUpdate // update payout (approve, reject) <admin>
+router.patch("/:payoutId", auth.authorize("admin"), payoutController.adminUpdate // update payout (approve, reject) <admin>
 );
 
 export { router as payoutRouter };
