@@ -1,14 +1,25 @@
 import mongoose from "mongoose";
 import { MONGO_URI } from "../utils/constants.js";
 
-const connectDB = async () => {
-    try {
-        await mongoose.connect(MONGO_URI);
-        console.log('MongoDB Connected Successfully');
-    } catch (error) {
-        console.error('MongoDB Connection Error:', error);
-        process.exit(1);
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
+export const connectDB = async () => {
+    if (cached.conn) return cached.conn;
+
+    if (!cached.promise) {
+        cached.promise = mongoose.connect(MONGO_URI, {
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+            family: 4,  // for serverless
+        }).then((mongoose) => mongoose);
     }
+
+    cached.conn = await cached.promise;
+    return cached.conn;
 };
 
 export default connectDB;
