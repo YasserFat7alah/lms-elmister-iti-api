@@ -23,6 +23,12 @@ const userSchema = new mongoose.Schema(
       default: "male",
     },
 
+    age: {
+      type: Number,
+      min: 1,
+      max: 120,
+    },
+
     email: {
       type: String,
       required: true,
