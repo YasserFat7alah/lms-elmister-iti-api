@@ -9,7 +9,7 @@ class LessonService extends BaseService {
     constructor(lessonModel, groupModel) {
         super(lessonModel);
         this.groupModel = groupModel;
-        
+
     }
 
     /**
@@ -34,9 +34,9 @@ class LessonService extends BaseService {
             }
         }
 
-        const lessonData = { 
+        const lessonData = {
             ...data,
-            status: data.status || 'published' 
+            status: data.status || 'published'
         };
 
         if (files?.video?.[0]) {
@@ -47,7 +47,7 @@ class LessonService extends BaseService {
                 type: "video"
             };
         }
-        
+
         if (files?.document?.length) {
             lessonData.document = [];
             for (const docFile of files.document) {
@@ -65,8 +65,8 @@ class LessonService extends BaseService {
         await group.save();
 
         const studentIds = group.students?.map(s => s._id);
-if (lesson.groupId && studentIds && studentIds.length > 0) {
-            
+        if (lesson.groupId && studentIds && studentIds.length > 0) {
+
             const notifications = await notificationService.notifyManyUsers({
                 userIds: studentIds,
                 title: "New Session Added",
@@ -78,7 +78,7 @@ if (lesson.groupId && studentIds && studentIds.length > 0) {
 
             studentIds.forEach(id => {
                 const notif = notifications.find(n => n.receiver.toString() === id.toString());
-                if(notif) emitNotification({ userId: id, notification: notif });
+                if (notif) emitNotification({ userId: id, notification: notif });
             });
         }
 
@@ -87,7 +87,7 @@ if (lesson.groupId && studentIds && studentIds.length > 0) {
     /**
      * Retrieves lessons for a group.
      */
-async getLessonsByGroup(groupId, page = 1, limit = 50, currentUser) {
+    async getLessonsByGroup(groupId, page = 1, limit = 50, currentUser) {
         if (!groupId) throw AppError.badRequest("Group ID is required");
 
         const group = await this.groupModel.findById(groupId);
@@ -111,10 +111,13 @@ async getLessonsByGroup(groupId, page = 1, limit = 50, currentUser) {
             .skip(skip)
             .limit(limit)
             .populate({
-                path: "groupId", 
-            populate: { path: "teacherId",
-                select: "title link",
-                select: "name" }            });
+                path: "groupId",
+                populate: {
+                    path: "teacherId",
+                    select: "title link",
+                    select: "name"
+                }
+            });
         const total = await this.model.countDocuments({ groupId });
 
         return {
@@ -124,8 +127,8 @@ async getLessonsByGroup(groupId, page = 1, limit = 50, currentUser) {
             data: lessons
         };
     }
-    
-    
+
+
     /**
      * Updates a lesson.
      */
@@ -189,7 +192,7 @@ async getLessonsByGroup(groupId, page = 1, limit = 50, currentUser) {
             if (existingIndex > -1) {
                 // Update status
                 lesson.attendance[existingIndex].status = record.status;
-                if(record.attendedAt) lesson.attendance[existingIndex].attendedAt = record.attendedAt;
+                if (record.attendedAt) lesson.attendance[existingIndex].attendedAt = record.attendedAt;
             } else {
                 // Add new record
                 lesson.attendance.push({
@@ -228,22 +231,22 @@ async getLessonsByGroup(groupId, page = 1, limit = 50, currentUser) {
     }
 
 
-async addMaterial(lessonId, materialData) {
-    const lesson = await this.model.findByIdAndUpdate(
-        lessonId,
-        { $push: { materials: materialData } },
-        { new: true }
-    );
+    async addMaterial(lessonId, materialData) {
+        const lesson = await this.model.findByIdAndUpdate(
+            lessonId,
+            { $push: { materials: materialData } },
+            { new: true }
+        );
 
-    if (!lesson) throw new Error("Lesson not found"); 
-    return lesson;
-}
+        if (!lesson) throw new Error("Lesson not found");
+        return lesson;
+    }
 
-async getLessonById(id, currentUser) {
+    async getLessonById(id, currentUser) {
         const lesson = await this.model.findById(id)
             .populate({
                 path: "groupId",
-                select: "students teacher" 
+                select: "students teacher"
             })
             .populate("materials");
 
@@ -263,16 +266,16 @@ async getLessonById(id, currentUser) {
 
 
 
-async removeMaterial(lessonId, materialId) {
-    const lesson = await this.model.findByIdAndUpdate(
-        lessonId,
-        { $pull: { materials: { _id: materialId } } },
-        { new: true }
-    );
+    async removeMaterial(lessonId, materialId) {
+        const lesson = await this.model.findByIdAndUpdate(
+            lessonId,
+            { $pull: { materials: { _id: materialId } } },
+            { new: true }
+        );
 
-    if (!lesson) throw new Error("Lesson not found");
-    return lesson;
-}
+        if (!lesson) throw new Error("Lesson not found");
+        return lesson;
+    }
 
     async deleteLesson(id, user) {
         const lesson = await this.model.findById(id).populate('groupId');
@@ -315,7 +318,7 @@ async removeMaterial(lessonId, materialId) {
 
 
 
-    
+
     async reorder(groupId, orderedLessons, user) {
         if (!Array.isArray(orderedLessons) || !orderedLessons.length) throw AppError.badRequest("Invalid data");
         const group = await this.groupModel.findById(groupId);

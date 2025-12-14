@@ -50,7 +50,7 @@ class ChatController {
         const isParticipant = conversation.participants.some(p => String(p) === String(senderId));
         if (!isParticipant) throw new Error('You are not part of this conversation');
 
-        // Populate message with sender details before emitting
+        // Populate message with sender details
         const populatedMsg = await Message.findById(msg._id).populate('sender', 'name role avatar');
 
         const io = getIo();

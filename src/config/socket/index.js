@@ -1,6 +1,3 @@
-// backend/config/socket/index.js
-// COMPLETE FIXED VERSION - Copy this entire file
-
 import { Server } from "socket.io";
 import Conversation from "./../../models/chat/Conversation.js";
 import ChatService from './../../services/chat.service.js';
@@ -20,12 +17,11 @@ export function initSocket(server, options = {}) {
             credentials: true,
             methods: ["GET", "POST"]
         },
-        // ✅ Use explicit path without trailing slash
         path: "/socket.io",
         transports: ['websocket', 'polling']
     });
 
-    console.log('[Socket.io] ✅ Initializing Socket.io server...');
+    console.log('[Socket.io]  Initializing Socket.io server...');
 
     // Authentication Middleware
     io.use((socket, next) => {
@@ -34,25 +30,24 @@ export function initSocket(server, options = {}) {
             console.log('[Socket Auth] Token present:', !!token);
             
             if (!token) {
-                console.log('[Socket Auth] ❌ No token provided');
                 return next(new Error("Unauthorized"));
             }
             
             const payload = authService.verifyToken(token, JWT_SECRET);
-            console.log('[Socket Auth] ✅ Authenticated user:', payload.id, payload.name || 'Name not in token');
+            console.log('[Socket Auth]  Authenticated user:', payload.id, payload.name || 'Name not in token');
             
             socket.userId = payload.id;
             socket.userName = payload.name;
             socket.userRole = payload.role;
             next();
         } catch (err) {
-            console.error('[Socket Auth] ❌ Token verification failed:', err.message);
+            console.error('[Socket Auth]  Token verification failed:', err.message);
             next(new Error("Unauthorized"));
         }
     });
 
     io.on("connection", (socket) => {
-        console.log('[Socket] ✅ New client connected:', socket.id, '| User:', socket.userName || socket.userId);
+        console.log('[Socket]  New client connected:', socket.id, '| User:', socket.userName || socket.userId);
 
         /**
          * Join rooms dynamically
@@ -63,17 +58,17 @@ export function initSocket(server, options = {}) {
             
             if (role) {
                 socket.join(role);
-                console.log(`[Socket] 📂 Joined role room: ${role}`);
+                console.log(`[Socket]  Joined role room: ${role}`);
             }
             
             if (userId) {
                 const roomName = `user_${userId}`;
                 socket.join(roomName);
-                console.log(`[Socket] ✅ Joined user room: ${roomName} | Socket: ${socket.id}`);
+                console.log(`[Socket] Joined user room: ${roomName} | Socket: ${socket.id}`);
                 
-                // ✅ Verify room membership
+                // Verify room membership
                 const rooms = Array.from(socket.rooms);
-                console.log(`[Socket] 📋 All rooms for socket ${socket.id}:`, rooms);
+                console.log(`[Socket] All rooms for socket ${socket.id}:`, rooms);
             }
             
             if (groupId) {
@@ -91,40 +86,38 @@ export function initSocket(server, options = {}) {
                 console.log('[Socket] 🆕 Starting conversation (socket):', socket.userId, '→', receiverId);
                 const senderId = socket.userId;
                 const conv = await chatService.startConversation(senderId, receiverId);
-                if (conv) console.log('[Socket] ✅ Conversation returned:', conv._id);
+                if (conv) console.log('[Socket] Conversation returned:', conv._id);
                 // Notify participants via socket
                 conv.participants.forEach(p => {
                     io.to(`user_${p}`).emit('conversationCreated', conv);
                 });
                 callback({ conversationId: conv._id });
             } catch (err) {
-                console.error('[Socket] ❌ Error starting conversation (socket):', err);
+                console.error('[Socket]  Error starting conversation (socket):', err);
                 callback({ error: err.message });
             }
         });
 
         /**
-         * Send message - CRITICAL FIX
+         * Send message
          */
         socket.on("sendMessage", async ({ conversationId, receiverId, text }) => {
             try {
                 const senderId = socket.userId;
-                console.log('[Socket] 📨 === MESSAGE SEND START ===');
+                console.log('[Socket]  === MESSAGE SEND START ===');
                 console.log('[Socket] From:', senderId);
                 console.log('[Socket] To:', receiverId);
                 console.log('[Socket] Conversation:', conversationId);
-                console.log('[Socket] Text:', text.substring(0, 50));
 
                 // Validate conversation
                 const conversation = await Conversation.findById(conversationId);
                 if (!conversation) {
-                    console.error('[Socket] ❌ Conversation not found:', conversationId);
+                    console.error('[Socket]  Conversation not found:', conversationId);
                     return socket.emit("errorMessage", { message: "Conversation not found", conversationId });
                 }
                 
                 console.log('[Socket] 📋 Conversation participants:', conversation.participants.map(p => String(p)));
                 
-                // Compare by string to handle ObjectId vs string mismatch
                 if (!senderId) {
                     console.error('[Socket] ❌ Socket had no authenticated userId:', socket.id);
                     return socket.emit('errorMessage', { message: 'Socket not authenticated', socketId: socket.id });
@@ -133,7 +126,7 @@ export function initSocket(server, options = {}) {
                 const participantStrings = conversation.participants.map(p => String(p));
                 const isMember = participantStrings.some(p => String(p) === String(senderId));
                 if (!isMember) {
-                    console.error('[Socket] ❌ User not part of conversation:', senderId, 'Participants:', participantStrings);
+                    console.error('[Socket]  User not part of conversation:', senderId, 'Participants:', participantStrings);
                     return socket.emit("errorMessage", {
                         message: "You are not part of this conversation",
                         senderId,
@@ -149,18 +142,17 @@ export function initSocket(server, options = {}) {
                     text,
                 });
 
-                console.log('[Socket] ✅ Message created:', message._id);
 
-                // ✅ CRITICAL: Populate sender information
+                //  Populate sender information
                 const populatedMessage = await Message.findById(message._id)
                     .populate('sender', 'name role avatar');
 
                 if (!populatedMessage || !populatedMessage.sender) {
-                    console.error('[Socket] ❌ Failed to populate message sender');
+                    console.error('[Socket]  Failed to populate message sender');
                     return socket.emit("errorMessage", { message: "Failed to send message" });
                 }
 
-                console.log('[Socket] ✅ Message populated with sender:', {
+                console.log('[Socket] Message populated with sender:', {
                     senderId: populatedMessage.sender._id,
                     senderName: populatedMessage.sender.name,
                     senderRole: populatedMessage.sender.role
@@ -179,10 +171,8 @@ export function initSocket(server, options = {}) {
                     createdAt: populatedMessage.createdAt,
                 };
 
-                console.log('[Socket] 📤 Prepared payload:', JSON.stringify(payload, null, 2));
-
-                // ✅ CRITICAL: Emit to ALL participants
-                console.log('[Socket] 🎯 Emitting to participants:', conversation.participants);
+                //  Emit to ALL participants
+                console.log('[Socket]  Emitting to participants:', conversation.participants);
                 
                 let emittedCount = 0;
                 conversation.participants.forEach((participantId) => {
@@ -190,18 +180,15 @@ export function initSocket(server, options = {}) {
                     
                     // Get all sockets in this room
                     const socketsInRoom = io.sockets.adapter.rooms.get(roomName);
-                    console.log(`[Socket] 📡 Room ${roomName} has ${socketsInRoom?.size || 0} socket(s):`, 
+                    console.log(`[Socket]  Room ${roomName} has ${socketsInRoom?.size || 0} socket(s):`, 
                         socketsInRoom ? Array.from(socketsInRoom) : 'No sockets');
                     
                     // Emit to the room
                     io.to(roomName).emit("newMessage", payload);
                     emittedCount++;
                     
-                    console.log(`[Socket] ✅ Emitted "newMessage" to room: ${roomName}`);
+                    console.log(`[Socket]  Emitted "newMessage" to room: ${roomName}`);
                 });
-
-                console.log(`[Socket] ✅ Message emitted to ${emittedCount} participant rooms`);
-                console.log('[Socket] 📨 === MESSAGE SEND COMPLETE ===\n');
 
                 // Update conversation's last message
                 await Conversation.findByIdAndUpdate(conversationId, {
@@ -211,7 +198,6 @@ export function initSocket(server, options = {}) {
 
             } catch (err) {
                 console.error('[Socket] ❌ Error sending message:', err);
-                console.error('[Socket] Error stack:', err.stack);
                 socket.emit("errorMessage", { message: err.message });
             }
         });
@@ -225,7 +211,7 @@ export function initSocket(server, options = {}) {
         });
     });
 
-    console.log('[Socket.io] ✅ Socket.io initialized and ready');
+    console.log('[Socket.io]  Socket.io initialized and ready');
     return io;
 }
 
@@ -245,17 +231,17 @@ export async function emitNotification({ receiverRole, userId = null, groupId = 
     
     if (receiverRole) {
         io.to(receiverRole).emit("notification", notification);
-        console.log(`[Notification] 📢 Emitted to role: ${receiverRole}`);
+        console.log(`[Notification]  Emitted to role: ${receiverRole}`);
     }
     
     if (userId) {
         const roomName = `user_${userId}`;
         io.to(roomName).emit("notification", notification);
-        console.log(`[Notification] 📢 Emitted to user: ${roomName}`);
+        console.log(`[Notification]  Emitted to user: ${roomName}`);
     }
     
     if (groupId) {
         io.to(`group_${groupId}`).emit("notification", notification);
-        console.log(`[Notification] 📢 Emitted to group: ${groupId}`);
+        console.log(`[Notification]  Emitted to group: ${groupId}`);
     }
 }
