@@ -19,6 +19,7 @@ import { cloudinaryRouter } from "./helpers/cloudinary.routes.js";
 import newsletterRouter from "./newsletter.routes.js";
 import ticketRouter from "./ticket.routes.js";
 import { chatRouter } from "./chat.routes.js";
+import { aiRouter } from "./ai.routes.js";
 
 
 
@@ -54,6 +55,9 @@ router.use("/chat", chatRouter);
 
 /* --- --- --- HELPERS ENDPOINTS --- --- --- */
 router.use("/cloudinary", cloudinaryRouter);
+
+/* --- --- --- AI ENDPOINTS --- --- --- */
+router.use("/ai", aiRouter);
 
 
 export default router;
