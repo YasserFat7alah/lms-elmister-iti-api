@@ -1,5 +1,5 @@
 import express from "express";
-import ragService from "../services/ragService.js";
+import ragService from "../services/rag.service.js";
 import asyncHandler from "express-async-handler";
 import AppError from "../utils/app.error.js";
 
