@@ -34,8 +34,8 @@ export const SMTP_PASS = process.env.SMTP_PASS;
 const IS_GMAIL = (process.env.SMTP_SERVICE || 'gmail').toLowerCase() === 'gmail';
 export const NODEMAILER_CONFIG = {
     ...(IS_GMAIL ? {
-            service: 'gmail'
-        } 
+        service: 'gmail'
+    }
         : {
             host: process.env.SMTP_HOST || 'smtp.example.com',
             port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
@@ -52,21 +52,21 @@ export const SENDER_EMAIL = process.env.SENDER_EMAIL || SMTP_USER || '';
 
 // ===> Application Constants
 export const GRADE_LEVELS = [
-    "1","2","3","4","5","6","7","8",
-    "9","10","11","12"
+    "1", "2", "3", "4", "5", "6", "7", "8",
+    "9", "10", "11", "12"
 ];
 
 // ===> Cookie Settings
 export const REFRESH_COOKIE_SETTINGS = {
     httpOnly: true,
     secure: IS_PRODUCTION,
-    sameSite: IS_PRODUCTION ? 'none' : 'strict',
+    sameSite: IS_PRODUCTION ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 export const ACCESS_COOKIE_SETTINGS = {
     httpOnly: true,
     secure: IS_PRODUCTION,
-    sameSite: IS_PRODUCTION ? 'none' : 'strict',
+    sameSite: IS_PRODUCTION ? 'none' : 'lax',
     maxAge: 15 * 60 * 1000,
 };

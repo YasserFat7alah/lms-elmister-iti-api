@@ -208,6 +208,10 @@ class WebhookService {
         enrollment.cancelAt = this.updateDate(subscription.cancel_at);
         enrollment.canceledAt = this.updateDate(subscription.canceled_at);
 
+        if (subscription.status === 'canceled') {
+            await enrollmentService.removeStudentFromGroup(enrollment.group, enrollment.student);
+        }
+
         await enrollment.save();
     }
 

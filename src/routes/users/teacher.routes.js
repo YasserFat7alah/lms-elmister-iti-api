@@ -2,6 +2,7 @@ import { Router } from "express";
 import authMiddleware from "../../middlewares/auth.middleware.js";
 import multerMiddleware from '../../middlewares/multer.middleware.js';
 import teacherController from "../../controllers/users/teacher.controller.js";
+import payoutController from "../../controllers/payout.controller.js";
 
 
 const router = Router();
@@ -36,6 +37,10 @@ router.post("/me/certificates",
 router.delete("/me/certificates/:id",
     teacherController.deleteCertificate
 );
+
+router.post("/payouts/onboard", payoutController.onboard);
+router.get("/payouts/onboard/callback", payoutController.checkOnboarding);
+
 /* --- --- --- --- --- --- --- --- --- --- */
 
 export { router as teacherRouter };
