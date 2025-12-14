@@ -167,14 +167,79 @@ class EnrollmentService extends BaseService {
       throw AppError.forbidden("You do not own this enrollment");
     }
 
-    const stripeUpdated = await stripe.subscriptions.update(
-      enrollment.subscriptionId,
-      { cancel_at_period_end: true }
-    );
+    // Handle paid enrollments with Stripe subscriptions
+    if (enrollment.subscriptionId) {
+      try {
+        const stripeUpdated = await stripe.subscriptions.update(
+          enrollment.subscriptionId,
+          { cancel_at_period_end: true }
+        );
 
-    enrollment.cancelAtPeriodEnd = stripeUpdated.cancel_at_period_end;
-    enrollment.status = stripeUpdated.status;
-    enrollment.canceledAt = this.updateDate(stripeUpdated.canceled_at, enrollment.canceledAt);
+        enrollment.cancelAtPeriodEnd = stripeUpdated.cancel_at_period_end;
+        enrollment.status = stripeUpdated.status;
+        enrollment.canceledAt = this.updateDate(stripeUpdated.canceled_at, enrollment.canceledAt);
+      } catch (stripeError) {
+        console.error("Stripe cancellation error:", stripeError);
+        // If Stripe fails, still mark the enrollment as pending cancellation
+        enrollment.cancelAtPeriodEnd = true;
+        enrollment.canceledAt = new Date();
+      }
+    } else {
+      // Handle free enrollments or enrollments without Stripe subscription
+      // For free enrollments, we can cancel immediately
+      enrollment.status = "canceled";
+      enrollment.cancelAtPeriodEnd = false;
+      enrollment.canceledAt = new Date();
+    }
+
+    await enrollment.save();
+    return enrollment;
+  }
+
+  /** Renew a cancelled enrollment (remove cancel_at_period_end flag) */
+  async renew(userId, enrollmentId, role = "parent") {
+    const enrollment = await Enrollment.findById(enrollmentId);
+    if (!enrollment) {
+      throw AppError.notFound("Enrollment not found");
+    }
+
+    if (role === "parent" && enrollment.parent.toString() !== userId.toString()) {
+      throw AppError.forbidden("You do not own this enrollment");
+    }
+
+    // Allow renewal if it's set to cancel OR already canceled
+    const canRenew = enrollment.cancelAtPeriodEnd || enrollment.status === "canceled";
+
+    if (!canRenew) {
+      throw AppError.badRequest("This subscription is not cancelled");
+    }
+
+    // Handle paid enrollments with Stripe subscriptions
+    if (enrollment.subscriptionId) {
+      try {
+        const stripeUpdated = await stripe.subscriptions.update(
+          enrollment.subscriptionId,
+          { cancel_at_period_end: false }
+        );
+
+        enrollment.cancelAtPeriodEnd = stripeUpdated.cancel_at_period_end;
+        enrollment.status = stripeUpdated.status;
+        enrollment.canceledAt = null; // Clear cancellation date
+      } catch (stripeError) {
+        console.error("Stripe renewal error:", stripeError);
+        // If Stripe fails, still allow local renewal
+        // This handles cases where subscription doesn't exist in Stripe or API key issues
+        console.log("Proceeding with local renewal despite Stripe error");
+        enrollment.cancelAtPeriodEnd = false;
+        enrollment.status = "active";
+        enrollment.canceledAt = null;
+      }
+    } else {
+      // Handle free enrollments - reactivate them
+      enrollment.status = "active";
+      enrollment.cancelAtPeriodEnd = false;
+      enrollment.canceledAt = null;
+    }
 
     await enrollment.save();
     return enrollment;
@@ -246,8 +311,31 @@ class EnrollmentService extends BaseService {
       student: studentId,
       status: { $in: ['active', 'trialing'] }
     })
-      .populate('group')
-      .select('group course status');
+      .populate({
+        path: 'group',
+        select: 'title type schedule startingDate startingTime location link courseId teacherId',
+        populate: {
+          path: 'courseId',
+          select: 'title subTitle description subject gradeLevel teacherId thumbnail',
+          populate: {
+            path: 'teacherId',
+            select: 'name username avatar email'
+          }
+        }
+      })
+      .populate({
+        path: 'course',
+        select: 'title subTitle description subject gradeLevel teacherId thumbnail',
+        populate: {
+          path: 'teacherId',
+          select: 'name username avatar email'
+        }
+      })
+      .populate({
+        path: 'teacher',
+        select: 'name username avatar email'
+      })
+      .select('group course teacher status currentPeriodStart currentPeriodEnd createdAt');
 
     return enrollments;
   }

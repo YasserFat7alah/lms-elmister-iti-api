@@ -18,6 +18,7 @@ import { notificationRouter } from "./notification.routes.js";
 import { cloudinaryRouter } from "./helpers/cloudinary.routes.js";
 import newsletterRouter from "./newsletter.routes.js";
 import ticketRouter from "./ticket.routes.js";
+import { childrenRouter } from "./children.routes.js";
 
 
 
@@ -37,6 +38,7 @@ router.use("/reviews", reviewRouter);
 router.use("/comments", commentRouter);
 router.use("/newsletter", newsletterRouter); // Added
 router.use("/tickets", ticketRouter); // Added
+router.use("/children", childrenRouter);
 
 /* --- --- --- COURSE ENDPOINTS --- --- --- */
 router.use("/courses", courseRouter);

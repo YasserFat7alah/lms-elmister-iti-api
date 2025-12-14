@@ -10,6 +10,7 @@ import { webhookRouter } from "./routes/webhook.routes.js";
 import appRouter from "./routes/index.js";
 
 const app = express();
+console.log("App restarting...");
 
 /* --- --- --- DB Connection --- --- --- */
 connectDB();
@@ -21,8 +22,8 @@ app.use('/api/v1/webhooks', webhookRouter);
 app.use(passport.initialize());
 app.use(cors({
     origin: CLIENT_URL || 'http://localhost:3000', // or '*' for dev
-    methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true, // if sending cookies
 }));
 app.use(express.json());
@@ -33,16 +34,16 @@ app.use("/api/v1", appRouter);
 
 /* --- --- --- HEALTH CHECK --- --- --- */
 app.get("/", (req, res) => {
-    res.status(200).json({ 
-        status: 'success', 
+    res.status(200).json({
+        status: 'success',
         message: "Welcome to Elmister api service --->",
         timestamp: new Date().toISOString(),
     });
 });
 
 app.get("/ping", (req, res) => {
-    res.status(200).json({ 
-        status: 'success', 
+    res.status(200).json({
+        status: 'success',
         message: "pong",
         timestamp: new Date().toISOString(),
     });

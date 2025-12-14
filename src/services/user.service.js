@@ -410,6 +410,70 @@ class UserService extends BaseService {
 
     return fullProfile;
   }
+
+  /** Get Public Teacher by ID
+   * @param {string} userId
+   */
+  async getPublicTeacherById(userId) {
+    this._validateId(userId);
+
+    const user = await this.model.findById(userId).lean();
+    if (!user) throw AppError.notFound(`User with ID ${userId} not found`);
+
+    if (user.role !== 'teacher') {
+      throw AppError.notFound(`User with ID ${userId} is not a teacher`);
+    }
+
+    // Populate Teacher Profile
+    const profileData = await mongoose.model('TeacherProfile').findOne({ user: user._id }).lean();
+    if (!profileData) {
+      // Should ideally have a profile if role is teacher, but handle grace case
+      // throw AppError.notFound("Teacher profile not found");
+    }
+
+    // Count Published Courses
+    const totalCourses = await mongoose.model('Course').countDocuments({ teacherId: user._id, status: 'published' });
+
+    // Count Active Groups
+    const totalGroups = await mongoose.model('Group').countDocuments({ teacherId: user._id });
+
+    if (profileData) {
+      profileData.totalCourses = totalCourses;
+      profileData.totalGroups = totalGroups;
+
+      // Populate Reviews
+      const reviews = await mongoose.model('Review').find({ target: user._id, targetModel: 'User' })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('user', 'name avatar')
+        .lean();
+
+      profileData.reviews = reviews;
+    }
+
+    // Flatten and sanitize
+    const fullProfile = {
+      ...user,
+      ...(profileData || {}),
+      _id: user._id,
+      password: undefined,
+      __v: undefined,
+      provider: undefined,
+      providerId: undefined,
+      linkedProviders: undefined,
+      otp: undefined,
+      otpExpiry: undefined,
+      payoutAccount: undefined,
+      balance: undefined,
+      pendingPayouts: undefined,
+      totalEarnings: undefined
+    };
+
+    // Remove undefined
+    Object.keys(fullProfile).forEach(key => fullProfile[key] === undefined && delete fullProfile[key]);
+
+    return fullProfile;
+  }
   /**
    * Admin: Delete User and related profile
    * @param {string} userId
