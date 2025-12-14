@@ -50,6 +50,9 @@ export const NODEMAILER_CONFIG = {
 
 export const SENDER_EMAIL = process.env.SENDER_EMAIL || SMTP_USER || '';
 
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 // ===> Application Constants
 export const GRADE_LEVELS = [
     "1", "2", "3", "4", "5", "6", "7", "8",

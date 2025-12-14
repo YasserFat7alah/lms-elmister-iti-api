@@ -24,6 +24,11 @@ const CourseSchema = new mongoose.Schema(
       maxlength: 2000,
     },
 
+    price: {
+      type: Number,
+      default: 0,
+    },
+
     features: [{
       type: String,
       trim: true,
