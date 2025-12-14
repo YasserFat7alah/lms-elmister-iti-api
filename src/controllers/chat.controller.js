@@ -1,5 +1,7 @@
 import asyncHandler from "express-async-handler";
 import { getIo } from "../config/socket/index.js";
+import Conversation from "../models/chat/Conversation.js";
+import Message from "../models/chat/Message.js";
 
 
 class ChatController {
@@ -12,6 +14,16 @@ class ChatController {
         const { receiverId } = req.body;
 
         const conv = await this.chatService.startConversation(userA, receiverId);
+
+        // Emit conversation created to both participants 
+        try {
+            const io = getIo();
+            conv.participants.forEach(p => {
+                io.to(`user_${p}`).emit('conversationCreated', conv);
+            });
+        } catch (err) {
+            console.error('[ChatController] Failed to emit conversationCreated', err);
+        }
 
         res.status(200).json({
             success: true,
@@ -31,12 +43,19 @@ class ChatController {
             text
         });
 
-        // emit via socket
-        const conversation = await this.chatService.startConversation(senderId, req.body.receiverId);
+        // Emit message to all participants
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) throw new Error('Conversation not found');
+
+        const isParticipant = conversation.participants.some(p => String(p) === String(senderId));
+        if (!isParticipant) throw new Error('You are not part of this conversation');
+
+        // Populate message with sender details before emitting
+        const populatedMsg = await Message.findById(msg._id).populate('sender', 'name role avatar');
 
         const io = getIo();
         conversation.participants.forEach((p) => {
-            io.to(`user_${p}`).emit("newMessage", msg);
+            io.to(`user_${p}`).emit("newMessage", populatedMsg);
         });
 
         res.status(201).json({

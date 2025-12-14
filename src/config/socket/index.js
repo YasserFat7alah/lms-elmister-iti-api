@@ -1,128 +1,236 @@
+// backend/config/socket/index.js
+// COMPLETE FIXED VERSION - Copy this entire file
+
 import { Server } from "socket.io";
 import Conversation from "./../../models/chat/Conversation.js";
+import ChatService from './../../services/chat.service.js';
 import Message from "./../../models/chat/Message.js";
 import authService from "./../../services/auth.service.js";
 import { JWT_SECRET } from "./../../utils/constants.js";
-
 
 let io;
 
 /**
  * Initialize Socket.io
- * @param {http.Server} server - HTTP server created from Express
- * @param {object} options - Optional configuration (CORS, etc.)
- * @returns {Server} Socket.io instance
  */
 export function initSocket(server, options = {}) {
     io = new Server(server, {
-        cors: { origin: options.frontendOrigin || "*", },
+        cors: { 
+            origin: options.frontendOrigin || ["http://localhost:3000", "http://localhost:3001"],
+            credentials: true,
+            methods: ["GET", "POST"]
+        },
+        // ✅ Use explicit path without trailing slash
+        path: "/socket.io",
+        transports: ['websocket', 'polling']
     });
 
+    console.log('[Socket.io] ✅ Initializing Socket.io server...');
 
+    // Authentication Middleware
     io.use((socket, next) => {
         try {
             const token = socket.handshake.auth?.token;
-            if (!token) return next(new Error("Unauthorized"));
+            console.log('[Socket Auth] Token present:', !!token);
+            
+            if (!token) {
+                console.log('[Socket Auth] ❌ No token provided');
+                return next(new Error("Unauthorized"));
+            }
+            
             const payload = authService.verifyToken(token, JWT_SECRET);
+            console.log('[Socket Auth] ✅ Authenticated user:', payload.id, payload.name || 'Name not in token');
+            
             socket.userId = payload.id;
             socket.userName = payload.name;
             socket.userRole = payload.role;
             next();
         } catch (err) {
+            console.error('[Socket Auth] ❌ Token verification failed:', err.message);
             next(new Error("Unauthorized"));
         }
     });
 
     io.on("connection", (socket) => {
-        console.log("New client connected:", socket.id);
+        console.log('[Socket] ✅ New client connected:', socket.id, '| User:', socket.userName || socket.userId);
 
         /**
          * Join rooms dynamically
-         * roles: 'admin', 'teacher', 'student', 'parent', 'user'
-         * userId: for personal notifications
-         * groupId: for course/class group notifications
          */
         socket.on("joinRoom", ({ role, userId, groupId }) => {
-            socket.userId = userId; // store on socket
+            socket.userId = userId;
             socket.userRole = role;
-            if (role) socket.join(role);
-            if (userId) socket.join(`user_${userId}`);
-            if (groupId) socket.join(`group_${groupId}`);
-
-            console.log(`Socket ${socket.id} joined rooms:`, { role, userId, groupId });
+            
+            if (role) {
+                socket.join(role);
+                console.log(`[Socket] 📂 Joined role room: ${role}`);
+            }
+            
+            if (userId) {
+                const roomName = `user_${userId}`;
+                socket.join(roomName);
+                console.log(`[Socket] ✅ Joined user room: ${roomName} | Socket: ${socket.id}`);
+                
+                // ✅ Verify room membership
+                const rooms = Array.from(socket.rooms);
+                console.log(`[Socket] 📋 All rooms for socket ${socket.id}:`, rooms);
+            }
+            
+            if (groupId) {
+                socket.join(`group_${groupId}`);
+                console.log(`[Socket] 📂 Joined group room: group_${groupId}`);
+            }
         });
 
-        // Start conversation
+        /**
+         * Start conversation
+         */
+        const chatService = new ChatService();
         socket.on("startConversation", async ({ receiverId }, callback) => {
             try {
+                console.log('[Socket] 🆕 Starting conversation (socket):', socket.userId, '→', receiverId);
                 const senderId = socket.userId;
-                let conv = await Conversation.findOne({
-                    participants: { $all: [senderId, receiverId] },
+                const conv = await chatService.startConversation(senderId, receiverId);
+                if (conv) console.log('[Socket] ✅ Conversation returned:', conv._id);
+                // Notify participants via socket
+                conv.participants.forEach(p => {
+                    io.to(`user_${p}`).emit('conversationCreated', conv);
                 });
-
-                if (!conv) {
-                    conv = await Conversation.create({
-                        participants: [senderId, receiverId],
-                    });
-                }
-
                 callback({ conversationId: conv._id });
             } catch (err) {
-                console.error(err);
+                console.error('[Socket] ❌ Error starting conversation (socket):', err);
                 callback({ error: err.message });
             }
         });
 
-        //send message
-        socket.on("sendMessage", async ({ conversationId, receiverId,text }) => {
+        /**
+         * Send message - CRITICAL FIX
+         */
+        socket.on("sendMessage", async ({ conversationId, receiverId, text }) => {
             try {
                 const senderId = socket.userId;
+                console.log('[Socket] 📨 === MESSAGE SEND START ===');
+                console.log('[Socket] From:', senderId);
+                console.log('[Socket] To:', receiverId);
+                console.log('[Socket] Conversation:', conversationId);
+                console.log('[Socket] Text:', text.substring(0, 50));
 
+                // Validate conversation
                 const conversation = await Conversation.findById(conversationId);
-                if (!conversation || !conversation.participants.includes(senderId)) {
-                    return socket.emit("errorMessage", { message: "You are not part of this conversation" });
+                if (!conversation) {
+                    console.error('[Socket] ❌ Conversation not found:', conversationId);
+                    return socket.emit("errorMessage", { message: "Conversation not found", conversationId });
+                }
+                
+                console.log('[Socket] 📋 Conversation participants:', conversation.participants.map(p => String(p)));
+                
+                // Compare by string to handle ObjectId vs string mismatch
+                if (!senderId) {
+                    console.error('[Socket] ❌ Socket had no authenticated userId:', socket.id);
+                    return socket.emit('errorMessage', { message: 'Socket not authenticated', socketId: socket.id });
                 }
 
+                const participantStrings = conversation.participants.map(p => String(p));
+                const isMember = participantStrings.some(p => String(p) === String(senderId));
+                if (!isMember) {
+                    console.error('[Socket] ❌ User not part of conversation:', senderId, 'Participants:', participantStrings);
+                    return socket.emit("errorMessage", {
+                        message: "You are not part of this conversation",
+                        senderId,
+                        participants: participantStrings,
+                        conversationId
+                    });
+                }
+
+                // Create message
                 const message = await Message.create({
                     conversation: conversationId,
                     sender: senderId,
                     text,
                 });
 
+                console.log('[Socket] ✅ Message created:', message._id);
+
+                // ✅ CRITICAL: Populate sender information
+                const populatedMessage = await Message.findById(message._id)
+                    .populate('sender', 'name role avatar');
+
+                if (!populatedMessage || !populatedMessage.sender) {
+                    console.error('[Socket] ❌ Failed to populate message sender');
+                    return socket.emit("errorMessage", { message: "Failed to send message" });
+                }
+
+                console.log('[Socket] ✅ Message populated with sender:', {
+                    senderId: populatedMessage.sender._id,
+                    senderName: populatedMessage.sender.name,
+                    senderRole: populatedMessage.sender.role
+                });
+
+                // Prepare payload
                 const payload = {
-                    _id: message._id,
-                    conversation: message.conversation,
+                    _id: populatedMessage._id,
+                    conversation: populatedMessage.conversation,
                     sender: {
-                        _id: senderId,
-                        name: socket.userName ||senderId,
-                        role: socket.userRole,
+                        _id: populatedMessage.sender._id,
+                        name: populatedMessage.sender.name,
+                        role: populatedMessage.sender.role,
                     },
-                    text: message.text,
-                    createdAt: message.createdAt,
+                    text: populatedMessage.text,
+                    createdAt: populatedMessage.createdAt,
                 };
 
-                // Emit to all participants
-                conversation.participants.forEach((p) => {
-                    io.to(`user_${p}`).emit("newMessage", payload);
+                console.log('[Socket] 📤 Prepared payload:', JSON.stringify(payload, null, 2));
+
+                // ✅ CRITICAL: Emit to ALL participants
+                console.log('[Socket] 🎯 Emitting to participants:', conversation.participants);
+                
+                let emittedCount = 0;
+                conversation.participants.forEach((participantId) => {
+                    const roomName = `user_${participantId}`;
+                    
+                    // Get all sockets in this room
+                    const socketsInRoom = io.sockets.adapter.rooms.get(roomName);
+                    console.log(`[Socket] 📡 Room ${roomName} has ${socketsInRoom?.size || 0} socket(s):`, 
+                        socketsInRoom ? Array.from(socketsInRoom) : 'No sockets');
+                    
+                    // Emit to the room
+                    io.to(roomName).emit("newMessage", payload);
+                    emittedCount++;
+                    
+                    console.log(`[Socket] ✅ Emitted "newMessage" to room: ${roomName}`);
                 });
+
+                console.log(`[Socket] ✅ Message emitted to ${emittedCount} participant rooms`);
+                console.log('[Socket] 📨 === MESSAGE SEND COMPLETE ===\n');
+
+                // Update conversation's last message
+                await Conversation.findByIdAndUpdate(conversationId, {
+                    lastMessage: populatedMessage._id,
+                    updatedAt: Date.now()
+                });
+
             } catch (err) {
-                console.error(err);
+                console.error('[Socket] ❌ Error sending message:', err);
+                console.error('[Socket] Error stack:', err.stack);
                 socket.emit("errorMessage", { message: err.message });
             }
         });
 
-        socket.on("disconnect", () => {
-            console.log("Client disconnected:", socket.id);
+        socket.on("disconnect", (reason) => {
+            console.log('[Socket] ❌ Client disconnected:', socket.id, '| User:', socket.userName || socket.userId, '| Reason:', reason);
+        });
+
+        socket.on("error", (error) => {
+            console.error('[Socket] ❌ Socket error:', error);
         });
     });
 
-    console.log("Socket.io initialized");
+    console.log('[Socket.io] ✅ Socket.io initialized and ready');
     return io;
 }
 
 /**
  * Get the Socket.io instance
- * @returns {Server} Socket.io instance
  */
 export function getIo() {
     if (!io) throw new Error("Socket.io not initialized");
@@ -131,16 +239,23 @@ export function getIo() {
 
 /**
  * Emit a notification to specific rooms
- * @param {object} options - options for emitting
- * @param {string} options.receiverRole - role room (e.g., 'admin')
- * @param {string} options.userId - user-specific room
- * @param {string} options.groupId - group-specific room
- * @param {object} options.notification - notification object to emit
  */
 export async function emitNotification({ receiverRole, userId = null, groupId = null, notification }) {
-
     if (!io) throw new Error("Socket.io not initialized");
-    if (receiverRole) io.to(receiverRole).emit("notification", notification); //emit to role
-    if (userId) io.to(`user_${userId}`).emit("notification", notification); //emit to user
-    if (groupId) io.to(`group_${groupId}`).emit("notification", notification); //emit to group
+    
+    if (receiverRole) {
+        io.to(receiverRole).emit("notification", notification);
+        console.log(`[Notification] 📢 Emitted to role: ${receiverRole}`);
+    }
+    
+    if (userId) {
+        const roomName = `user_${userId}`;
+        io.to(roomName).emit("notification", notification);
+        console.log(`[Notification] 📢 Emitted to user: ${roomName}`);
+    }
+    
+    if (groupId) {
+        io.to(`group_${groupId}`).emit("notification", notification);
+        console.log(`[Notification] 📢 Emitted to group: ${groupId}`);
+    }
 }

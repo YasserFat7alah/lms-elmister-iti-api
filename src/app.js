@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/database.js";
+import mongoose from 'mongoose';
+import Conversation from './models/chat/Conversation.js';
 import passport from "./config/passport/index.js";
 import AppError from "./utils/app.error.js";
 import errorHandler from "./middlewares/error.middleware.js";
@@ -13,6 +15,16 @@ const app = express();
 
 /* --- --- --- DB Connection --- --- --- */
 connectDB();
+
+// Sync conversation indexes after DB connection
+mongoose.connection.once('open', async () => {
+    try {
+        await Conversation.syncIndexes();
+        console.log('[DB]  Conversation indexes synced');
+    } catch (err) {
+        console.error('[DB]  Failed to sync Conversation indexes', err.message || err);
+    }
+});
 
 /* --- --- --- WEBHOOKS --- --- --- */
 app.use('/api/v1/webhooks', webhookRouter);

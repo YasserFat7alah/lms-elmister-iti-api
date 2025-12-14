@@ -30,7 +30,7 @@ export class AuthService extends BaseService {
    * @returns {string} The generated access token
    */
   generateToken(user, secret = JWT_SECRET, expiresIn = JWT_ACCESS_EXPIRE) {
-    return jwt.sign({ id: user._id, role: user.role }, secret, { expiresIn });
+    return jwt.sign({ id: user._id,name:user.name, role: user.role }, secret, { expiresIn });
   }
 
   /** Generate Access and Refresh Tokens
