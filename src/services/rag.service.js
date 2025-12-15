@@ -15,7 +15,7 @@ if (GEMINI_API_KEY) {
     console.log("✅ GEMINI_API_KEY found. Initializing Gemini...");
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     // Pinning to 001 to avoid 404s on generic alias
-    geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+    geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     embeddings = new GoogleGenerativeAIEmbeddings({
         apiKey: GEMINI_API_KEY,
@@ -30,7 +30,7 @@ if (GROQ_API_KEY) {
     console.log("✅ GROQ_API_KEY found. Initializing Groq...");
     groqModel = new ChatGroq({
         apiKey: GROQ_API_KEY,
-        model: "llama3-70b-8192",
+        model: "llama-3.3-70b-versatile",
         temperature: 0.2,
     });
 } else {
