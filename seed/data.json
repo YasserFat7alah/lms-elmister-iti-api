@@ -1,0 +1,367 @@
+[ {
+    "title": "Physics: Electromagnetism Deep Dive",
+    "subTitle": "Advanced Physics for secondary 3rd with Dr. Lena.",
+    "description": "Master the principles of electromagnetism, covering Maxwell's equations, circuits, and modern applications. Get ready for competitive exams. [Image: Diagram of Maxwell's equations or a circuit board]",
+    "features": ["Weekly Quizzes", "Lab Simulations"],
+    "thumbnail": {
+      "url": "https://placeholder.com/image/advanced-physics-em",
+      "publicId": "courses/thumbnails/physics-em-thumb",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://placeholder.com/video/physics-em-intro",
+      "publicId": "courses/videos/physics-em-video",
+      "type": "video"
+    },
+    "subject": "Physics",
+    "gradeLevel": "12",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["advanced physics", "dr lena", "electromagnetism", "secondary 3rd"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da98c1" },
+    "groups": [{ "$oid": "693b5494988507f47b973991" }],
+    "averageRating": 4.5,
+    "ratingsCount": 120,
+    "totalStudents": 450,
+    "createdAt": { "$date": "2025-10-01T10:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-05T15:30:00.000Z" },
+    "__v": 0
+  },
+“generate a course thumbnail for this course data in aspect ratio 16:9 , it should be catchy and suitable to the course grade - course subject with a thinkfull themed”“generate a course thumbnail for this course data in aspect ratio 16:9 , it should be catchy and suitable to the course grade - course subject with a thinkfull themed”  {
+    "title": "Physics: Electromagnetism Deep Dive",
+    "subTitle": "Advanced Physics for secondary 3rd with Dr. Lena.",
+    "description": "Master the principles of electromagnetism, covering Maxwell's equations, circuits, and modern applications. Get ready for competitive exams. [Image: Diagram of Maxwell's equations or a circuit board]",
+    "features": ["Weekly Quizzes", "Lab Simulations"],
+    "thumbnail": {
+      "url": "https://placeholder.com/image/advanced-physics-em",
+      "publicId": "courses/thumbnails/physics-em-thumb",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://placeholder.com/video/physics-em-intro",
+      "publicId": "courses/videos/physics-em-video",
+      "type": "video"
+    },
+    "subject": "Physics",
+    "gradeLevel": "12",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["advanced physics", "dr lena", "electromagnetism", "secondary 3rd"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da98c1" },
+    "groups": [{ "$oid": "693b5494988507f47b973991" }],
+    "averageRating": 4.5,
+    "ratingsCount": 120,
+    "totalStudents": 450,
+    "createdAt": { "$date": "2025-10-01T10:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-05T15:30:00.000Z" },
+    "__v": 0
+  },
+{
+    "title": "Advanced Physics: Mechanics",
+    "subTitle": "Master Newton's Laws with Dr. Ahmed.",
+    "description": "A deep dive into classical mechanics, motion, energy, and momentum. Perfect for Grade 12 students preparing for engineering entrance exams.",
+    "features": ["Weekly Quizzes", "Lab Simulations"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/phys_mech_01.jpg",
+      "publicId": "courses/thumbnails/phys_mech_01",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/phys_intro.mkv",
+      "publicId": "courses/videos/phys_intro",
+      "type": "video"
+    },
+    "subject": "Physics",
+    "gradeLevel": "12",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["physics", "mechanics", "science", "grade 12"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99a1" },
+    "groups": [{ "$oid": "693b5494988507f47b973990" }],
+    "averageRating": 4.8,
+    "ratingsCount": 12,
+    "totalStudents": 45,
+    "createdAt": { "$date": "2025-12-10T10:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T10:00:00.000Z" },
+    "__v": 0
+  },
+  {
+    "title": "Organic Chemistry Fundamentals",
+    "subTitle": "Unlock the secrets of Carbon with Ms. Sarah.",
+    "description": "Understand hydrocarbons, functional groups, and reaction mechanisms. Essential for medical track students.",
+    "features": ["Reaction Maps", "3D Molecule Views"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/chem_org_02.jpg",
+      "publicId": "courses/thumbnails/chem_org_02",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/chem_intro.mkv",
+      "publicId": "courses/videos/chem_intro",
+      "type": "video"
+    },
+    "subject": "Chemistry",
+    "gradeLevel": "11",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["chemistry", "organic", "science", "grade 11"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99a2" },
+    "groups": [{ "$oid": "693b5494988507f47b973991" }],
+    "averageRating": 4.5,
+    "ratingsCount": 8,
+    "totalStudents": 30,
+    "createdAt": { "$date": "2025-12-11T09:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T09:00:00.000Z" },
+    "__v": 0
+  },
+  {
+    "title": "World History: The Modern Era",
+    "subTitle": "From WWI to the Digital Age with Mr. Johnson.",
+    "description": "Explore the major geopolitical shifts of the 20th century. We analyze causes, effects, and the shaping of the modern world.",
+    "features": [],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/hist_mod_03.jpg",
+      "publicId": "courses/thumbnails/hist_mod_03",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/hist_intro.mkv",
+      "publicId": "courses/videos/hist_intro",
+      "type": "video"
+    },
+    "subject": "History",
+    "gradeLevel": "10",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["history", "humanities", "grade 10", "modern era"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99a3" },
+    "groups": [{ "$oid": "693b5494988507f47b973992" }],
+    "averageRating": 0,
+    "ratingsCount": 0,
+    "totalStudents": 0,
+    "createdAt": { "$date": "2025-12-12T14:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T14:00:00.000Z" },
+    "__v": 0
+  },
+  {
+    "title": "Biology: Genetics & Heredity",
+    "subTitle": "Decode the DNA with Dr. Emily.",
+    "description": "Learn about Mendelian genetics, DNA replication, and biotechnology. A must-have course for aspiring biologists.",
+    "features": ["Interactive DNA Labs"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/bio_gen_04.jpg",
+      "publicId": "courses/thumbnails/bio_gen_04",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/bio_intro.mkv",
+      "publicId": "courses/videos/bio_intro",
+      "type": "video"
+    },
+    "subject": "Biology",
+    "gradeLevel": "12",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["biology", "genetics", "science", "grade 12"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99a4" },
+    "groups": [{ "$oid": "693b5494988507f47b973993" }],
+    "averageRating": 5.0,
+    "ratingsCount": 5,
+    "totalStudents": 20,
+    "createdAt": { "$date": "2025-12-11T16:30:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T16:30:00.000Z" },
+    "__v": 0
+  },
+  {
+    "title": "Computer Science: Python Basics",
+    "subTitle": "Start coding today with Mr. Tech.",
+    "description": "Introduction to programming using Python. Learn variables, loops, functions, and basic data structures.",
+    "features": ["Code Editor Integration"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/cs_py_05.jpg",
+      "publicId": "courses/thumbnails/cs_py_05",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/cs_intro.mkv",
+      "publicId": "courses/videos/cs_intro",
+      "type": "video"
+    },
+    "subject": "Computer Science",
+    "gradeLevel": "11",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["coding", "python", "technology", "grade 11"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99a5" },
+    "groups": [{ "$oid": "693b5494988507f47b973994" }],
+    "averageRating": 4.9,
+    "ratingsCount": 20,
+    "totalStudents": 100,
+    "createdAt": { "$date": "2025-12-09T08:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T08:00:00.000Z" },
+    "__v": 0
+  },
+  {
+    "title": "French Language: Intermediate",
+    "subTitle": "Parlez-vous Français with Madame Dubois.",
+    "description": "Improve your conversational skills and master complex grammar structures in French.",
+    "features": ["Audio Listening Tests"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/fr_lang_08.jpg",
+      "publicId": "courses/thumbnails/fr_lang_08",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/fr_intro.mkv",
+      "publicId": "courses/videos/fr_intro",
+      "type": "video"
+    },
+    "subject": "French",
+    "gradeLevel": "11",
+    "status": "published",
+    "courseLanguage": "french",
+    "tags": ["languages", "french", "humanities"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99a8" },
+    "groups": [{ "$oid": "693b5494988507f47b973997" }],
+    "averageRating": 4.6,
+    "ratingsCount": 10,
+    "totalStudents": 50,
+    "createdAt": { "$date": "2025-12-08T09:30:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T09:30:00.000Z" },
+    "__v": 0
+  },
+  {
+    "title": "Calculus I: Differentiation",
+    "subTitle": "Limits and Derivatives with Mr. Yasser.",
+    "description": "The foundation of advanced mathematics. Learn about limits, continuity, and the rules of differentiation.",
+    "features": ["Step-by-step Solutions"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/math_calc_09.jpg",
+      "publicId": "courses/thumbnails/math_calc_09",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/math_intro.mkv",
+      "publicId": "courses/videos/math_intro",
+      "type": "video"
+    },
+    "subject": "Mathematics",
+    "gradeLevel": "12",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["math", "calculus", "science", "grade 12"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da98bf" },
+    "groups": [{ "$oid": "693b5494988507f47b973989" }],
+    "averageRating": 5.0,
+    "ratingsCount": 2,
+    "totalStudents": 8,
+    "createdAt": { "$date": "2025-12-11T23:30:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T06:45:00.000Z" },
+    "__v": 0
+  },
+
+  {
+    "title": "Arabic Grammar: Nahw & Sarf",
+    "subTitle": "Master the Arabic language rules with Ustadh Ali.",
+    "description": "Advanced syntax and morphology for secondary students specializing in Arabic language studies.",
+    "features": [],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/arb_gram_10.jpg",
+      "publicId": "courses/thumbnails/arb_gram_10",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/arb_intro.mkv",
+      "publicId": "courses/videos/arb_intro",
+      "type": "video"
+    },
+    "subject": "Arabic",
+    "gradeLevel": "12",
+    "status": "published",
+    "courseLanguage": "arabic",
+    "tags": ["arabic", "languages", "grammar", "grade 12"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99a9" },
+    "groups": [{ "$oid": "693b5494988507f47b973998" }],
+    "averageRating": 0,
+    "ratingsCount": 0,
+    "totalStudents": 0,
+    "createdAt": { "$date": "2025-12-12T18:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T18:00:00.000Z" },
+    "__v": 0
+  },
+
+  {
+    "title": "Physical Geography",
+    "subTitle": "Earth's systems and landscapes with Mrs. Green.",
+    "description": "Study the atmosphere, lithosphere, hydrosphere, and biosphere. Understanding our planet's physical processes.",
+    "features": ["Map Reading Exercises"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/geo_phys_11.jpg",
+      "publicId": "courses/thumbnails/geo_phys_11",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/geo_intro.mkv",
+      "publicId": "courses/videos/geo_intro",
+      "type": "video"
+    },
+    "subject": "Geography",
+    "gradeLevel": "10",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["geography", "earth science", "humanities"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99b0" },
+    "groups": [{ "$oid": "693b5494988507f47b973999" }],
+    "averageRating": 4.1,
+    "ratingsCount": 15,
+    "totalStudents": 60,
+    "createdAt": { "$date": "2025-12-07T14:20:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T14:20:00.000Z" },
+    "__v": 0
+  },
+
+  {
+    "title": "Intro to Psychology",
+    "subTitle": "Understanding the human mind with Dr. Freud.",
+    "description": "An introduction to behavioral science, cognition, and developmental psychology for high school students.",
+    "features": [],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/psych_intro_12.jpg",
+      "publicId": "courses/thumbnails/psych_intro_12",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/psych_intro.mkv",
+      "publicId": "courses/videos/psych_intro",
+      "type": "video"
+    },
+    "subject": "Psychology",
+    "gradeLevel": "12",
+    "status": "published",
+    "courseLanguage": "english",
+    "tags": ["psychology", "social science", "grade 12"],
+    "teacherId": { "$oid": "693a01112f6b6ca002da99b1" },
+    "groups": [{ "$oid": "693b5494988507f47b9739aa" }],
+    "averageRating": 0,
+    "ratingsCount": 0,
+    "totalStudents": 0,
+    "createdAt": { "$date": "2025-12-12T20:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-12T20:00:00.000Z" },
+    "__v": 0
+  },
+  {
+    "title": "Physics: Electricity and Magnetism",
+    "subTitle": "Exploring the laws of physics with Professor Watt.",
+    "description": "Learn about electricity and magnetism, and how they interact with other physical phenomena.",
+    "features": ["Lab Simulations"],
+    "thumbnail": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/image/upload/v1765495589/courses/thumbnails/phys_elec_13.jpg",
+      "publicId": "courses/thumbnails/phys_elec_13",
+      "type": "image"
+    },
+    "video": {
+      "url": "https://res.cloudinary.com/djwxpq1t8/video/upload/v1765495587/courses/videos/phys_elec_intro.mkv",
+      "publicId": "courses/videos/phys_elec_intro",
+      "type": "video"    
+    },  
+}]

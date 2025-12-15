@@ -347,12 +347,22 @@ class UserService extends BaseService {
     };
   }
 
-  /** Get User by Username (Public Profile)
-   * @param {string} username
+  /** Get User by Username or _id (Public Profile)
+   * @param {string} identifier - Can be username or MongoDB _id
    */
-  async getUserByUsername(username) {
-    const user = await this.model.findOne({ username }).lean();
-    if (!user) throw AppError.notFound(`User @${username} not found`);
+  async getUserByUsername(identifier) {
+    // Check if identifier is a valid MongoDB ObjectId
+    const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
+    
+    const query = isObjectId 
+      ? { _id: new mongoose.Types.ObjectId(identifier) }
+      : { username: identifier.toLowerCase().trim() };
+    
+    const user = await this.model.findOne(query).lean();
+    if (!user) {
+      const type = isObjectId ? 'ID' : 'username';
+      throw AppError.notFound(`User with ${type} "${identifier}" not found`);
+    }
 
     // Populate based on role
     let profileData = {};

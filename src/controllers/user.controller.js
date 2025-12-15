@@ -91,9 +91,9 @@ class UserController {
     });
   });
 
-  /** Get Public User Profile by Username */
+  /** Get Public User Profile by Username or Email */
   getUserByUsername = asyncHandler(async (req, res) => {
-    const { username } = req.params;
+    const { username } = req.params; // Can be username or email
     const user = await this.userService.getUserByUsername(username);
 
     res.status(200).json({
