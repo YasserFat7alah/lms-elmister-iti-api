@@ -24,7 +24,7 @@ router.post("/checkout/:groupId", authorize("parent"), validate(enrollSchema),
   enrollmentController.enroll
 );
 
-router.get("/me", authorize("parent"), enrollmentController.listMine);
+router.get("/me", authorize("parent", "student"), enrollmentController.listMine);
 
 // Get enrollments for a specific student (parent viewing their child's enrollments)
 router.get("/student/:studentId", authorize("parent"), enrollmentController.getByStudent);

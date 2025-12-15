@@ -308,6 +308,7 @@ class EnrollmentService extends BaseService {
    * @returns {Enrollment[]}
    * */
   async listByStudent(studentId) {
+    console.log("Fetching enrollments for student:", studentId);
     const enrollments = await this.model.find({
       student: studentId,
       status: { $in: ['active', 'trialing'] }
@@ -338,6 +339,7 @@ class EnrollmentService extends BaseService {
       })
       .select('group course teacher status currentPeriodStart currentPeriodEnd createdAt');
 
+    console.log(`Found ${enrollments.length} enrollments for student ${studentId}`);
     return enrollments;
   }
 

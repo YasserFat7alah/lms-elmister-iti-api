@@ -1,11 +1,11 @@
 import asyncHandler from "express-async-handler";
-import Group from "../models/Group.js"; 
+import Group from "../models/Group.js";
 import Lesson from "../models/Lesson.js";
 import ParentProfile from "../models/users/ParentProfile.js";
 
 class LessonController {
     constructor(lessonService) {
-        this.lessonService = lessonService; 
+        this.lessonService = lessonService;
     }
 
     /**
@@ -26,7 +26,7 @@ class LessonController {
      * Get All Lessons in a specific Group paginated
      * @route GET /api/v1/lessons/:groupId
      */
-getLessonsByGroup = asyncHandler(async (req, res) => {
+    getLessonsByGroup = asyncHandler(async (req, res) => {
         const { groupId } = req.params;
         const { page, limit } = req.query;
         const lessons = await this.lessonService.getLessonsByGroup(groupId, page, limit, req.user);
@@ -78,9 +78,9 @@ getLessonsByGroup = asyncHandler(async (req, res) => {
     });
 
     // * Get Single Lesson by ID
-//  * @route GET /api/v1/lessons/:id
-//  */
-getLessonById = asyncHandler(async (req, res) => {
+    //  * @route GET /api/v1/lessons/:id
+    //  */
+    getLessonById = asyncHandler(async (req, res) => {
         const { id } = req.params;
         const lesson = await this.lessonService.getLessonById(id, req.user);
 
@@ -89,7 +89,7 @@ getLessonById = asyncHandler(async (req, res) => {
             data: lesson,
         });
     });
-    
+
     /** * Delete document using lessonId and docId
      * @route DELETE /api/v1/lessons/:id/document/:docId
      */
@@ -142,53 +142,74 @@ getLessonById = asyncHandler(async (req, res) => {
             data: lesson,
         });
     });
- 
- 
-/**
-     * Get All Lessons for Current User (Teacher or Student)
-     * @route GET /api/v1/lessons
-     */
-getAllMyLessons = asyncHandler(async (req, res) => {
-    const userId = req.user._id;
-    const role = req.user.role;
-    let query = {};
-    if (role === 'teacher') {
-        const myGroups = await Group.find({ teacherId: userId }).select('_id');
-        const groupIds = myGroups.map(g => g._id);
-        query = { groupId: { $in: groupIds } };
-    
-    } else if (role === 'student') {
-        const myGroups = await Group.find({ students: userId }).select('_id');
-        const groupIds = myGroups.map(g => g._id);
-        query = { groupId: { $in: groupIds } };
-    
-    } else if (role === 'parent') {
-        const parentProfile = await ParentProfile.findOne({ user: userId });
-                
-        if (!parentProfile || !parentProfile.children || parentProfile.children.length === 0) {
-            console.log(" No children found in profile.");
-            return res.status(200).json({ success: true, data: [] });
-        }
-        const childrenIds = parentProfile.children.map(child => child.toString());
-        const childrenGroups = await Group.find({ 
-            students: { $in: parentProfile.children } 
-        }).select('_id title students');
-        
-        if (childrenGroups.length > 0) {
-            console.log("First Group Students Sample:", childrenGroups[0].students);
+
+
+    /**
+         * Get All Lessons for Current User (Teacher or Student)
+         * @route GET /api/v1/lessons
+         */
+    getAllMyLessons = asyncHandler(async (req, res) => {
+        const userId = req.user._id;
+        const role = req.user.role;
+        const { date } = req.query; // Get date from query params
+
+        let query = {};
+        if (role === 'teacher') {
+            const myGroups = await Group.find({ teacherId: userId }).select('_id');
+            const groupIds = myGroups.map(g => g._id);
+            query = { groupId: { $in: groupIds } };
+
+        } else if (role === 'student') {
+            const myGroups = await Group.find({ students: userId }).select('_id');
+            const groupIds = myGroups.map(g => g._id);
+            query = { groupId: { $in: groupIds } };
+
+        } else if (role === 'parent') {
+            const parentProfile = await ParentProfile.findOne({ user: userId });
+
+            if (!parentProfile || !parentProfile.children || parentProfile.children.length === 0) {
+                return res.status(200).json({ success: true, data: [] });
+            }
+
+            const childrenGroups = await Group.find({
+                students: { $in: parentProfile.children }
+            }).select('_id');
+
+            const groupIds = childrenGroups.map(g => g._id);
+            query = { groupId: { $in: groupIds } };
         }
 
-        const groupIds = childrenGroups.map(g => g._id);
-        query = { groupId: { $in: groupIds } };
-    }
-    const lessons = await Lesson.find(query)
-        .populate('groupId', 'title')
-        .sort({ date: 1, startTime: 1 });
-    res.status(200).json({
-        success: true,
-        data: lessons
+        // Add date filter if provided
+        if (date) {
+            // Assume date is passed as YYYY-MM-DD or ISO string
+            // We want to match the exact date stored in DB (assuming stored as YYYY-MM-DD string or Date object at midnight)
+            // If stored as ISO string in DB, we might need regex or range. 
+            // Based on existing code `new Date(lesson.date).toLocaleDateString()`, let's check how it's stored.
+            // Usually safer to query by range for a full day if stored as Date.
+
+            const targetDate = new Date(date);
+            const nextDay = new Date(targetDate);
+            nextDay.setDate(targetDate.getDate() + 1);
+
+            // Reset times to ensure full day coverage
+            targetDate.setHours(0, 0, 0, 0);
+            nextDay.setHours(0, 0, 0, 0);
+
+            query.date = {
+                $gte: targetDate,
+                $lt: nextDay
+            };
+        }
+
+        const lessons = await Lesson.find(query)
+            .populate('groupId', 'title')
+            .sort({ date: 1, startTime: 1 });
+
+        res.status(200).json({
+            success: true,
+            data: lessons
+        });
     });
-});
 
 
 
@@ -196,11 +217,11 @@ getAllMyLessons = asyncHandler(async (req, res) => {
 
 
 
-    
-    
-    
-    
-    
+
+
+
+
+
     /**
      * Mark Attendance
      * @route POST /api/v1/lessons/:id/attendance

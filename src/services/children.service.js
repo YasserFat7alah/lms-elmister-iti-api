@@ -8,6 +8,8 @@ import Lesson from "../models/Lesson.js";
 import Assignment from "../models/assignments/Assignment.js";
 import Submission from "../models/assignments/Submission.js";
 import Enrollment from "../models/Enrollment.js";
+import Quiz from "../models/quizzes/Quiz.js";
+import QuizSubmission from "../models/quizzes/QuizSubmission.js";
 
 /**
  * Children Service
@@ -126,6 +128,39 @@ class ChildrenService extends BaseService {
                     totalScore += score;
                     totalMaxScore += (assignment.totalGrade || 100);
                 }
+            } else {
+                pendingCount++;
+            }
+        }));
+
+        // 4. Quizzes & Grades
+        // Find all active quizzes for these groups/courses
+        const quizzes = await Quiz.find({
+            group: { $in: groupIds },
+            status: 'active'
+        });
+
+        await Promise.all(quizzes.map(async (quiz) => {
+            const submission = await QuizSubmission.findOne({
+                quiz: quiz._id,
+                student: childId,
+                isGraded: true
+            });
+
+            if (submission) {
+                const score = submission.score;
+                if (score !== undefined && score !== null) {
+                    totalScore += score;
+                    totalMaxScore += (quiz.totalGrade || 100);
+                }
+            } else if (new Date() > quiz.dueDate) {
+                // If deadline passed and not submitted, count as 0?
+                // Or just count pending.
+                // For average grade, usually we only count graded items or treat missing as 0.
+                // Let's treat missing as 0 if deadline passed, or just ignore if strict average.
+                // Current assignment logic only adds pendingCount if not submitted, doesn't penalize grade.
+                // Let's follow assignment logic: don't add to totalMaxScore if not submitted.
+                pendingCount++;
             } else {
                 pendingCount++;
             }
@@ -637,6 +672,35 @@ class ChildrenService extends BaseService {
                 // For pending count, usually means "to do".
                 // If passed and not submitted, acts as missing?
                 // Mock has "pending: 2". Let's assume pending = not submitted yet.
+                pendingAssignments++;
+            }
+        }));
+
+        // 4. Quizzes Stats
+        const quizzes = await Quiz.find({
+            $or: [
+                { course: courseId },
+                { group: groupId }
+            ],
+            status: 'active'
+        });
+
+        await Promise.all(quizzes.map(async (quiz) => {
+            const submission = await QuizSubmission.findOne({
+                quiz: quiz._id,
+                student: childId
+            });
+
+            if (submission) {
+                submittedAssignments++; // Counting quizzes as "assignments" for the summary for now
+                if (submission.isGraded) {
+                    const score = submission.score;
+                    if (score !== undefined && score !== null) {
+                        totalScore += score;
+                        totalMaxScore += (quiz.totalGrade || 100);
+                    }
+                }
+            } else {
                 pendingAssignments++;
             }
         }));

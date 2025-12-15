@@ -21,6 +21,7 @@ import ticketRouter from "./ticket.routes.js";
 import { chatRouter } from "./chat.routes.js";
 import { aiRouter } from "./ai.routes.js";
 import { childrenRouter } from "./children.routes.js";
+import { quizRouter } from "./quizzes/quiz.routes.js";
 
 
 
@@ -60,6 +61,9 @@ router.use("/cloudinary", cloudinaryRouter);
 
 /* --- --- --- AI ENDPOINTS --- --- --- */
 router.use("/ai", aiRouter);
+
+/* --- --- --- QUIZ ENDPOINTS --- --- --- */
+router.use("/quizzes", quizRouter);
 
 
 export default router;
