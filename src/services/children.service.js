@@ -25,10 +25,11 @@ class ChildrenService extends BaseService {
      */
     async getChildren(parentId) {
         // Find parent profile
-        const parentProfile = await ParentProfile.findOne({ user: parentId });
+        // Find parent profile or create if not exists
+        let parentProfile = await ParentProfile.findOne({ user: parentId });
 
         if (!parentProfile) {
-            throw AppError.notFound("Parent profile not found");
+            parentProfile = await ParentProfile.create({ user: parentId, children: [] });
         }
 
         // Get all children with their student profiles
@@ -309,9 +310,10 @@ class ChildrenService extends BaseService {
         this._validateId(parentId);
 
         // Verify parent profile exists
-        const parentProfile = await ParentProfile.findOne({ user: parentId });
+        // Verify parent profile exists or create if not exists
+        let parentProfile = await ParentProfile.findOne({ user: parentId });
         if (!parentProfile) {
-            throw AppError.notFound("Parent profile not found");
+            parentProfile = await ParentProfile.create({ user: parentId, children: [] });
         }
 
         // Check if email already exists

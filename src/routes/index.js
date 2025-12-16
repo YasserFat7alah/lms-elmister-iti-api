@@ -14,6 +14,7 @@ import { testimonialRouter } from "./testimonial.routes.js";
 import commentRouter from "./courses/comments.routes.js";
 import { assignmentRouter } from "./assignments/assignment.routes.js";
 import { submissionRouter } from "./assignments/submission.routes.js";
+import { quizRouter } from "./assignments/quiz.routes.js";
 import { notificationRouter } from "./notification.routes.js";
 import { cloudinaryRouter } from "./helpers/cloudinary.routes.js";
 import newsletterRouter from "./newsletter.routes.js";
@@ -50,6 +51,7 @@ router.use("/lessons", lessonRouter);
 router.use("/notifications", notificationRouter);
 router.use("/assignments", assignmentRouter);
 router.use("/submissions", submissionRouter);
+router.use("/quizzes", quizRouter);
 
 /* --- --- --- CHAT ENDPOINTS --- --- --- */
 router.use("/chat", chatRouter);

@@ -1,4 +1,5 @@
 import Assignment from "../models/assignments/Assignment.js";
+import Quiz from "../models/assignments/Quiz.js";
 import Enrollment from "../models/Enrollment.js";
 import StudentProfile from "../models/users/StudentProfile.js";
 import AppError from "../utils/app.error.js";
@@ -23,8 +24,9 @@ const isEnrolled = () => {
             //teacher is always allowed
             if (user.role === "teacher") return next();
 
-            //Get assignmentId or groupId from body or params
+            //Get assignmentId, quizId or groupId from body or params
             const assignmentId = req.body?.assignmentId || req.params?.assignmentId || null;
+            const quizId = req.body?.quizId || req.params?.quizId || null;
             const groupIdFromRequest = req.body?.group || req.params?.groupId || null;
 
 
@@ -42,13 +44,25 @@ const isEnrolled = () => {
                 req.assignment = assignment;
             }
 
+            // ........ If quizId provided >> get group from it .......
+            if (!groupId && quizId) {
+                const quiz = await Quiz.findById(quizId).select("group");
+
+                if (!quiz) {
+                    return next(AppError.notFound("Quiz not found"));
+                }
+
+                groupId = quiz.group;
+                req.quiz = quiz;
+            }
+
             // ....... If groupId provided directly ......
             if (!groupId && groupIdFromRequest) {
                 groupId = groupIdFromRequest;
             }
 
             if (!groupId) {
-                return next(AppError.badRequest("GroupId or AssignmentId is required"));
+                return next(AppError.badRequest("GroupId, QuizId, or AssignmentId is required"));
             }
 
 

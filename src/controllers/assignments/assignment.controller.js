@@ -12,50 +12,50 @@ class AssignmentController {
      * @body { title, description, group, lesson, totalGrade, dueDate, file }
     */
     createAssignment = asyncHandler(async (req, res) => {
-    const teacherId = req.user._id;
-    const file = req.file ? req.file : null;
+        const teacherId = req.user._id;
+        const file = req.file ? req.file : null;
 
-    // Convert FormData strings to proper types
-    if (req.body.allowLateSubmission !== undefined) {
-        req.body.allowLateSubmission = req.body.allowLateSubmission === 'true';
-    }
-    if (req.body.totalGrade) req.body.totalGrade = Number(req.body.totalGrade);
-    if (req.body.latePenaltyPerDay) req.body.latePenaltyPerDay = Number(req.body.latePenaltyPerDay);
-    if (req.body.maxLateDays) req.body.maxLateDays = Number(req.body.maxLateDays);
+        // Convert FormData strings to proper types
+        if (req.body.allowLateSubmission !== undefined) {
+            req.body.allowLateSubmission = req.body.allowLateSubmission === 'true';
+        }
+        if (req.body.totalGrade) req.body.totalGrade = Number(req.body.totalGrade);
+        if (req.body.latePenaltyPerDay) req.body.latePenaltyPerDay = Number(req.body.latePenaltyPerDay);
+        if (req.body.maxLateDays) req.body.maxLateDays = Number(req.body.maxLateDays);
 
-    const { 
-        title, 
-        description, 
-        lesson,
-        // Remove this: course,
-        group,
-        totalGrade, 
-        dueDate,
-        allowLateSubmission,
-        maxLateDays,
-        latePenaltyPerDay
-    } = req.body;
+        const {
+            title,
+            description,
+            lesson,
+            // Remove this: course,
+            group,
+            totalGrade,
+            dueDate,
+            allowLateSubmission,
+            maxLateDays,
+            latePenaltyPerDay
+        } = req.body;
 
-    const assignment = await this.assignmentService.createAssignment({
-        title, 
-        description, 
-        lesson, 
-        // Remove this: course,
-        group,
-        teacher: teacherId, 
-        totalGrade, 
-        dueDate,
-        allowLateSubmission,
-        maxLateDays,
-        latePenaltyPerDay,
-        file
+        const assignment = await this.assignmentService.createAssignment({
+            title,
+            description,
+            lesson,
+            // Remove this: course,
+            group,
+            teacher: teacherId,
+            totalGrade,
+            dueDate,
+            allowLateSubmission,
+            maxLateDays,
+            latePenaltyPerDay,
+            file
+        });
+
+        res.status(201).json({
+            success: true,
+            data: assignment
+        });
     });
-
-    res.status(201).json({
-        success: true,
-        data: assignment
-    });
-});
     /**
      * Get assignments of a group
      * @route GET api/v1/assignments/:groupId
@@ -64,8 +64,14 @@ class AssignmentController {
     getAssignmentsByGroup = asyncHandler(async (req, res) => {
 
         const { groupId } = req.params;
+        const user = req.user;
 
-        const assignments = await this.assignmentService.getAssignmentsByGroup(groupId);
+        let assignments;
+        if (user && user.role === 'student') {
+            assignments = await this.assignmentService.getGroupAssignmentsForStudent(groupId, user._id);
+        } else {
+            assignments = await this.assignmentService.getAssignmentsByGroup(groupId);
+        }
 
         res.status(200).json({
             success: true,
@@ -98,22 +104,39 @@ class AssignmentController {
     */
     getAssignmentById = asyncHandler(async (req, res) => {
 
-            const {assignmentId} = req.params;
+        const { assignmentId } = req.params;
 
-            const assignment = await this.assignmentService.getAssignmentById(assignmentId);
+        const assignment = await this.assignmentService.getAssignmentById(assignmentId);
 
-            res.status(200).json({
-                success: true,
-                data: assignment
-            });
+        res.status(200).json({
+            success: true,
+            data: assignment
+        });
     });
 
 
-     // Get all assignments for logged-in student
+    // Get all assignments for logged-in student
     getStudentAssignments = asyncHandler(async (req, res) => {
         const studentId = req.user._id;
 
         const assignments = await this.assignmentService.getAssignmentsForStudent(studentId);
+
+        res.status(200).json({
+            success: true,
+            data: assignments
+        });
+    });
+
+    /**
+     * Get assignments for a child (Parent access)
+     * @route GET api/v1/assignments/student/:studentId
+     * @auth parent
+     */
+    getChildAssignments = asyncHandler(async (req, res) => {
+        const { studentId } = req.params;
+        const parentId = req.user._id;
+
+        const assignments = await this.assignmentService.getAssignmentsForStudentByParent(studentId, parentId);
 
         res.status(200).json({
             success: true,
@@ -134,6 +157,25 @@ class AssignmentController {
             success: true,
             data: assignment
         });
+        res.status(200).json({
+            success: true,
+            data: assignment
+        });
+    });
+
+    /**
+     * Get all assignments created by the logged-in teacher
+     * @route GET api/v1/assignments/teacher/my-assignments
+     * @auth teacher
+     */
+    getTeacherAssignments = asyncHandler(async (req, res) => {
+        const teacherId = req.user._id;
+        const assignments = await this.assignmentService.getTeacherAssignments(teacherId);
+
+        res.status(200).json({
+            success: true,
+            data: assignments
+        });
     });
 
     updateAssignment = asyncHandler(async (req, res) => {
@@ -149,10 +191,10 @@ class AssignmentController {
         if (req.body.latePenaltyPerDay) req.body.latePenaltyPerDay = Number(req.body.latePenaltyPerDay);
         if (req.body.maxLateDays) req.body.maxLateDays = Number(req.body.maxLateDays);
 
-        const { 
-            title, 
-            description, 
-            totalGrade, 
+        const {
+            title,
+            description,
+            totalGrade,
             dueDate,
             allowLateSubmission,
             maxLateDays,
@@ -166,7 +208,7 @@ class AssignmentController {
         if (dueDate) updateData.dueDate = dueDate;
         if (allowLateSubmission !== undefined) {
             updateData.allowLateSubmission = allowLateSubmission;
-            
+
             if (allowLateSubmission) {
                 if (latePenaltyPerDay !== undefined) updateData.latePenaltyPerDay = latePenaltyPerDay;
                 if (maxLateDays !== undefined) updateData.maxLateDays = maxLateDays;
@@ -208,7 +250,7 @@ class AssignmentController {
         });
     });
 
-    
+
 }
 
 export default AssignmentController;

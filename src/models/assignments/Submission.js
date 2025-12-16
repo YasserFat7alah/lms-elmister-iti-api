@@ -15,6 +15,11 @@ const SubmissionSchema = new Schema(
             required: true
         },
 
+        answers: [{
+            questionId: { type: String, required: true },
+            answer: { type: Schema.Types.Mixed, required: true }
+        }],
+
         content: { type: String },
 
         file: {
@@ -22,9 +27,9 @@ const SubmissionSchema = new Schema(
             publicId: { type: String },
             type: { type: String, default: "raw" }
         },
-        
+
         grade: { type: Number },
-        
+
         feedback: { type: String },
 
         submittedAt: {
@@ -44,7 +49,7 @@ const SubmissionSchema = new Schema(
 
         penaltyApplied: {
             type: Number,
-            default: 0 
+            default: 0
         },
 
         finalGrade: {

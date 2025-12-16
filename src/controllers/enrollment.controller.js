@@ -31,16 +31,24 @@ class EnrollmentController {
     });
   });
 
-  /** List enrollments for current parent */
+  /** List enrollments for current user (parent or student) */
   listMine = asyncHandler(async (req, res) => {
-    const parentId = req.user._id || req.user.id;
-    const enrollments = await this.service.listByParent(parentId);
+    const userId = req.user._id || req.user.id;
+    const role = req.user.role;
+
+    let enrollments = [];
+
+    if (role === 'student') {
+      enrollments = await this.service.listByStudent(userId);
+    } else {
+      enrollments = await this.service.listByParent(userId);
+    }
 
     res.status(200).json({
       success: true,
       message: "Enrollments fetched successfully",
       count: enrollments.length,
-      enrollments,
+      data: enrollments, // Standardize on 'data' vs 'enrollments' key in response if possible, frontend might expect 'data'
     });
   });
 

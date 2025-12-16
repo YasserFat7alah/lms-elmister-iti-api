@@ -92,16 +92,80 @@ class UserService extends BaseService {
       }
     });
     if (avatar) updated.avatar = avatar;
-    if (Object.keys(updated).length === 0 && !avatar)
-      throw AppError.badRequest("No valid fields provided");
 
+    // 1. Update Base User
     const updatedUser = await this.updateById(
       userId,
       { ...updated },
       { new: true }
     );
 
-    return this.sanitize(updatedUser);
+    // 2. Update Role-Specific Profile
+    if (updatedUser.role === 'teacher') {
+      const teacherUpdates = {};
+      if (data.bio !== undefined) teacherUpdates.bio = data.bio;
+      if (data.yearsOfExperience !== undefined) teacherUpdates.yearsOfExperience = data.yearsOfExperience;
+
+      // Handle subjects (Handle both array and comma-separated string)
+      if (data.subjects) {
+        if (Array.isArray(data.subjects)) {
+          teacherUpdates.subjects = data.subjects;
+        } else if (typeof data.subjects === 'string') {
+          // Try parsing as JSON first (in case of stringified array), else split by comma
+          try {
+            const parsed = JSON.parse(data.subjects);
+            if (Array.isArray(parsed)) teacherUpdates.subjects = parsed;
+            else teacherUpdates.subjects = [data.subjects];
+          } catch (e) {
+            teacherUpdates.subjects = data.subjects.split(',').map(s => s.trim()).filter(Boolean);
+          }
+        }
+      }
+
+      // Handle qualifications (Expect JSON string if coming from FormData)
+      if (data.qualifications) {
+        if (typeof data.qualifications === 'string') {
+          try {
+            teacherUpdates.qualifications = JSON.parse(data.qualifications);
+          } catch (e) { console.error("Error parsing qualifications", e); }
+        } else if (Array.isArray(data.qualifications)) {
+          teacherUpdates.qualifications = data.qualifications;
+        }
+      }
+
+      if (Object.keys(teacherUpdates).length > 0) {
+        await mongoose.model("TeacherProfile").findOneAndUpdate(
+          { user: userId },
+          { $set: teacherUpdates },
+          { new: true, upsert: true } // Upsert just in case
+        );
+      }
+      // Fetch fresh data for return
+      await updatedUser.populate("teacherData");
+
+    } else if (updatedUser.role === 'student') {
+      const studentUpdates = {};
+      if (data.grade) studentUpdates.grade = data.grade;
+
+      if (Object.keys(studentUpdates).length > 0) {
+        await mongoose.model("StudentProfile").findOneAndUpdate(
+          { user: userId },
+          { $set: studentUpdates },
+          { new: true }
+        );
+      }
+      await updatedUser.populate("studentData");
+    }
+
+    // Mixin profile data
+    let finalUser = updatedUser.toObject();
+    if (finalUser.role === 'teacher' && finalUser.teacherData) {
+      finalUser = { ...finalUser, ...finalUser.teacherData };
+    } else if (finalUser.role === 'student' && finalUser.studentData) {
+      finalUser = { ...finalUser, ...finalUser.studentData };
+    }
+
+    return this.sanitize(finalUser);
   }
 
   async findAll(filters, options) {
@@ -353,11 +417,11 @@ class UserService extends BaseService {
   async getUserByUsername(identifier) {
     // Check if identifier is a valid MongoDB ObjectId
     const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
-    
-    const query = isObjectId 
+
+    const query = isObjectId
       ? { _id: new mongoose.Types.ObjectId(identifier) }
       : { username: identifier.toLowerCase().trim() };
-    
+
     const user = await this.model.findOne(query).lean();
     if (!user) {
       const type = isObjectId ? 'ID' : 'username';

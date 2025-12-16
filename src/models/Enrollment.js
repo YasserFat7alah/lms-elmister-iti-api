@@ -60,6 +60,7 @@ const EnrollmentSchema = new Schema(
     subscriptionId: {
       type: String,
       unique: true,
+      sparse: true,
     },
 
     checkoutSessionId: {

@@ -12,6 +12,8 @@ import Enrollment from "../../models/Enrollment.js";
 import ParentProfile from "../../models/users/ParentProfile.js";
 import StudentProfile from "../../models/users/StudentProfile.js";
 import TeacherProfile from "../../models/users/TeacherProfile.js";
+import notificationService from "../notification.service.js";
+import { emitNotification } from "../../config/socket/index.js";
 
 class EnrollmentService extends BaseService {
   constructor(model) {
@@ -94,6 +96,18 @@ class EnrollmentService extends BaseService {
 
       await this.ensureStudentInGroup(groupId, studentId);
 
+      // Notify Teacher
+      const notification = await notificationService.notifyUser({
+        receiver: group.teacherId,
+        title: "New Student Enrollment",
+        message: `New student ${student.name} has joined your group ${group.title}`,
+        type: "New_Enrollment",
+        actor: studentId,
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+      emitNotification({ userId: group.teacherId, notification });
+
       return {
         url: null,
         enrollment,
@@ -135,7 +149,7 @@ class EnrollmentService extends BaseService {
     const session = await paymentService.createCheckoutSession({
       customerId: stripeCustomerId,
       priceId: stripePriceId,
-      successUrl: `${CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: `${CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${CLIENT_URL}/payment/canceled`,
       metadata: {
         enrollmentId: enrollment._id.toString(),
@@ -194,6 +208,23 @@ class EnrollmentService extends BaseService {
     }
 
     await enrollment.save();
+
+    // Notify Teacher of cancellation
+    const student = await User.findById(enrollment.student);
+    const group = await Group.findById(enrollment.group);
+
+    if (group && student) {
+      const notification = await notificationService.notifyUser({
+        receiver: enrollment.teacher,
+        title: "Student Dropped",
+        message: `Student ${student.name} has left your group ${group.title}`,
+        type: "SYSTEM",
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+      emitNotification({ userId: enrollment.teacher, notification });
+    }
+
     return enrollment;
   }
 
@@ -315,14 +346,20 @@ class EnrollmentService extends BaseService {
       .populate({
         path: 'group',
         select: 'title type schedule startingDate startingTime location link courseId teacherId',
-        populate: {
-          path: 'courseId',
-          select: 'title subTitle description subject gradeLevel teacherId thumbnail',
-          populate: {
+        populate: [
+          {
+            path: 'courseId',
+            select: 'title subTitle description subject gradeLevel teacherId thumbnail',
+            populate: {
+              path: 'teacherId',
+              select: 'name username avatar email'
+            }
+          },
+          {
             path: 'teacherId',
             select: 'name username avatar email'
           }
-        }
+        ]
       })
       .populate({
         path: 'course',
@@ -338,7 +375,16 @@ class EnrollmentService extends BaseService {
       })
       .select('group course teacher status currentPeriodStart currentPeriodEnd createdAt');
 
-    return enrollments;
+    // Munge the data slightly to be friendlier if needed, or just return as is
+    // Frontend expects: enrollment.group.teacher to be an object (currently it might be group.teacherId populated)
+
+    return enrollments.map(e => {
+      const obj = e.toObject();
+      if (obj.group && obj.group.teacherId) {
+        obj.group.teacher = obj.group.teacherId; // Alias for frontend convenience
+      }
+      return obj;
+    });
   }
 
   /** Get parent profile
@@ -459,7 +505,7 @@ class EnrollmentService extends BaseService {
 
     const enrollment = await Enrollment.findOne({
       subscriptionId: invoice.subscription,
-    });
+    }).populate("student", "name").populate("group", "title");
     if (!enrollment) return;
 
     const alreadyLogged = enrollment.charges.some(
@@ -492,6 +538,18 @@ class EnrollmentService extends BaseService {
 
     await this.creditTeacher(enrollment.teacher, teacherShare);
     await this.ensureStudentInGroup(enrollment.group, enrollment.student);
+
+    // Notify Teacher
+    const notification = await notificationService.notifyUser({
+      receiver: enrollment.teacher,
+      title: "New Student Enrollment",
+      message: `New student ${enrollment.student?.name} has joined your group ${enrollment.group?.title}`,
+      type: "New_Enrollment",
+      actor: enrollment.student._id,
+      refId: enrollment._id,
+      refCollection: "Enrollment"
+    });
+    emitNotification({ userId: enrollment.teacher, notification });
   }
 
   async creditTeacher(teacherId, amount) {

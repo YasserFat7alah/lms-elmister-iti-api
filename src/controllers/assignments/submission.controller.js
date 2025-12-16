@@ -16,10 +16,15 @@ class SubmissionController {
      * @body content, file
      * */
     submitAssignment = asyncHandler(async (req, res) => {
+        console.log("=== SUBMIT ASSIGNMENT DEBUG ===");
+        console.log("User:", req.user?._id);
+        console.log("Params:", req.params);
+        console.log("Body:", req.body);
+        console.log("File:", req.file);
 
         const studentId = req.user._id;
         const file = req.file ? req.file : null;
-        const { content } = req.body;
+        const { content, answers } = req.body;
         const assignmentId = req.params.assignmentId;
 
         // Validate if assignment exists
@@ -27,7 +32,7 @@ class SubmissionController {
         if (!assignment) throw AppError.notFound("Assignment not found");
 
         //submit assignment
-        const submission = await this.submissionService.submit({ assignmentId, studentId, content, file });
+        const submission = await this.submissionService.submit({ assignmentId, studentId, content, answers, file });
 
         res.status(201).json({
             success: true,

@@ -11,7 +11,7 @@ import isEnrolled from "../../middlewares/isEnrolled.middleware.js";
 const router = express.Router();
 
 // Middlewares
-const upload = multer.single('document'); 
+const upload = multer.single('document');
 const { authenticate, authorize } = auth;
 
 // Instances
@@ -24,11 +24,17 @@ router.use(authenticate);
 // ===================== Student routes =====================
 router.get("/my-assignments", assignmentController.getStudentAssignments);
 
+// ===================== Parent routes =====================
+router.get("/student/:studentId", authorize("parent"), assignmentController.getChildAssignments);
+
 // ===================== Static routes for group & lesson =====================
 router.get("/group/:groupId", isEnrolled(), assignmentController.getAssignmentsByGroup);
 router.get("/lesson/:lessonId", isEnrolled(), assignmentController.getAssignmentsByLesson);
 
 // ===================== Assignment CRUD (Teacher) =====================
+// Get teacher assignments
+router.get("/teacher/my-assignments", authorize("teacher"), assignmentController.getTeacherAssignments);
+
 // Create assignment
 router.post("/", authorize("teacher"), upload, validate(assignmentSchema), assignmentController.createAssignment);
 
