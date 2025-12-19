@@ -33,7 +33,7 @@ app.use('/api/v1/webhooks', webhookRouter);
 /* --- --- --- MIDDLEWARES --- --- --- */
 app.use(passport.initialize());
 app.use(cors({
-    origin: CLIENT_URL || 'http://localhost:3000', // or '*' for dev
+    origin: CLIENT_URL ||  https:lms-elmister-iti-3bpn9d15i-omar12142s-projects.vercel.app/ , // or '*' for dev
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true, // if sending cookies
@@ -69,5 +69,6 @@ app.use((req, res, next) => {
 
 /* --- --- --- ERROR HANDLER --- --- --- */
 app.use(errorHandler);
+
 
 export default app;
