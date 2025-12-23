@@ -66,7 +66,6 @@ export const REFRESH_COOKIE_SETTINGS = {
     secure: IS_PRODUCTION,
     sameSite: IS_PRODUCTION ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    ...(IS_PRODUCTION && { domain: '.vercel.app' }), // Cross-subdomain support
 };
 
 export const ACCESS_COOKIE_SETTINGS = {
@@ -74,5 +73,4 @@ export const ACCESS_COOKIE_SETTINGS = {
     secure: IS_PRODUCTION,
     sameSite: IS_PRODUCTION ? 'none' : 'lax',
     maxAge: 15 * 60 * 1000, // 15 minutes
-    ...(IS_PRODUCTION && { domain: '.vercel.app' }), // Cross-subdomain support
 };
