@@ -7,6 +7,7 @@ import AppError from "../utils/app.error.js";
 import { STRIPE_WEBHOOK_SECRET } from "../utils/constants.js";
 import paymentService from "./payment.service.js";
 import enrollmentService from "./subscriptions/enrollment.service.js";
+import notificationService from "./notification.service.js";
 
 class WebhookService {
     constructor({ model }) {
@@ -136,6 +137,94 @@ class WebhookService {
         }
 
         await enrollment.save();
+        console.log("✅ Enrollment saved:", enrollment._id);
+
+        /* --- SEND NOTIFICATIONS --- */
+        try {
+            console.log("📧 Starting notification process for enrollment:", enrollment._id);
+
+            // Populate enrollment for notification messages
+            await enrollment.populate([
+                { path: 'student', select: 'name _id' },
+                { path: 'teacher', select: '_id name' },
+                { path: 'course', select: 'title' },
+                { path: 'parent', select: 'name _id' }
+            ]);
+
+            console.log("📋 Enrollment populated:");
+            console.log("  - Student:", enrollment.student?.name, enrollment.student?._id);
+            console.log("  - Teacher:", enrollment.teacher?.name, enrollment.teacher?._id);
+            console.log("  - Parent:", enrollment.parent?.name, enrollment.parent?._id);
+            console.log("  - Course:", enrollment.course?.title);
+
+            const courseName = enrollment.course?.title || 'the course';
+            const studentName = enrollment.student?.name || 'A student';
+            const teacherId = enrollment.teacher?._id;
+
+            // Notify Teacher (socket emission handled by notifyUser)
+            if (teacherId) {
+                console.log("👨‍🏫 Notifying teacher:", teacherId);
+                const teacherNotif = await notificationService.notifyUser({
+                    receiver: teacherId,
+                    title: "New Enrollment",
+                    message: `${studentName} has enrolled in ${courseName}`,
+                    type: "New_Enrollment",
+                    refId: enrollment._id,
+                    refCollection: "Enrollment",
+                });
+                console.log("✅ Teacher notification created:", teacherNotif._id);
+            } else {
+                console.log("⚠️ No teacher ID found for enrollment");
+            }
+
+            // Notify Student (socket emission handled by notifyUser)
+            if (enrollment.student) {
+                console.log("👨‍🎓 Notifying student:", enrollment.student._id);
+                const studentNotif = await notificationService.notifyUser({
+                    receiver: enrollment.student._id,
+                    title: "Enrollment Successful",
+                    message: `You've been successfully enrolled in ${courseName}`,
+                    type: "New_Enrollment",
+                    refId: enrollment._id,
+                    refCollection: "Enrollment",
+                });
+                console.log("✅ Student notification created:", studentNotif._id);
+            }
+
+            // Notify Parent if exists (socket emission handled by notifyUser)
+            if (enrollment.parent) {
+                console.log("👪 Notifying parent:", enrollment.parent._id);
+                const parentNotif = await notificationService.notifyUser({
+                    receiver: enrollment.parent._id,
+                    title: "Child Enrolled Successfully",
+                    message: `${studentName} has been enrolled in ${courseName}`,
+                    type: "New_Enrollment",
+                    refId: enrollment._id,
+                    refCollection: "Enrollment",
+                });
+                console.log("✅ Parent notification created:", parentNotif._id);
+            } else {
+                console.log("ℹ️ No parent for this enrollment");
+            }
+
+            // Notify Admins (socket emission handled by notifyByRole)
+            console.log("👑 Notifying admins for enrollment");
+            const adminNotif = await notificationService.notifyByRole({
+                role: "admin",
+                title: "New Enrollment",
+                message: `${studentName} enrolled in ${courseName}`,
+                type: "New_Enrollment",
+                refId: enrollment._id,
+                refCollection: "Enrollment",
+            });
+            console.log("✅ Admin notification created:", adminNotif._id);
+
+            console.log("✅ Enrollment notifications sent successfully");
+        } catch (error) {
+            console.error("❌ Failed to send enrollment notifications:", error);
+            console.error("Error stack:", error.stack);
+            // Don't fail the whole webhook if notification fails
+        }
 
         /* --- B. UPDATE PARENT --- */
         if (parentId) {
@@ -193,6 +282,9 @@ class WebhookService {
         // Pass subscription as object with ID for consistency
         const subscription = { id: subscriptionId, currency: invoice.currency };
         await this.processFinancials(invoice, enrollment, subscription);
+
+        // ✅ TRIGGER NOTIFICATIONS - Call enrollment service to create notifications
+        await enrollmentService.handleInvoicePaid(invoice);
     }
 
     /**

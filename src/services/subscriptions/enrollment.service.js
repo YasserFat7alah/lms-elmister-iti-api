@@ -97,7 +97,7 @@ class EnrollmentService extends BaseService {
       await this.ensureStudentInGroup(groupId, studentId);
 
       // Notify Teacher
-      const notification = await notificationService.notifyUser({
+      const teacherNotification = await notificationService.notifyUser({
         receiver: group.teacherId,
         title: "New Student Enrollment",
         message: `New student ${student.name} has joined your group ${group.title}`,
@@ -106,7 +106,43 @@ class EnrollmentService extends BaseService {
         refId: enrollment._id,
         refCollection: "Enrollment"
       });
-      emitNotification({ userId: group.teacherId, notification });
+      emitNotification({ userId: group.teacherId, notification: teacherNotification });
+
+      // Notify Admin
+      const adminNotification = await notificationService.notifyByRole({
+        role: "admin",
+        title: "New Enrollment",
+        message: `Student ${student.name} enrolled in ${group.title} (${group.courseId.title})`,
+        type: "New_Enrollment",
+        actor: studentId,
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+      emitNotification({ receiverRole: "admin", notification: adminNotification });
+
+      // Notify Student
+      const studentNotification = await notificationService.notifyUser({
+        receiver: studentId,
+        title: "Enrollment Successful",
+        message: `You've been enrolled in ${group.title}`,
+        type: "New_Enrollment",
+        actor: parentId,
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+      emitNotification({ userId: studentId, notification: studentNotification });
+
+      // Notify Parent
+      const parentNotification = await notificationService.notifyUser({
+        receiver: parentId,
+        title: "Student Enrolled",
+        message: `Your student ${student.name} has been enrolled in ${group.title}`,
+        type: "New_Enrollment",
+        actor: studentId,
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+      emitNotification({ userId: parentId, notification: parentNotification });
 
       return {
         url: null,
@@ -540,7 +576,7 @@ class EnrollmentService extends BaseService {
     await this.ensureStudentInGroup(enrollment.group, enrollment.student);
 
     // Notify Teacher
-    const notification = await notificationService.notifyUser({
+    const teacherNotification = await notificationService.notifyUser({
       receiver: enrollment.teacher,
       title: "New Student Enrollment",
       message: `New student ${enrollment.student?.name} has joined your group ${enrollment.group?.title}`,
@@ -549,7 +585,44 @@ class EnrollmentService extends BaseService {
       refId: enrollment._id,
       refCollection: "Enrollment"
     });
-    emitNotification({ userId: enrollment.teacher, notification });
+    emitNotification({ userId: enrollment.teacher, notification: teacherNotification });
+
+    // Notify Admin
+    const course = await Course.findById(enrollment.course).select("title");
+    const adminNotification = await notificationService.notifyByRole({
+      role: "admin",
+      title: "New Paid Enrollment",
+      message: `Student ${enrollment.student?.name} enrolled in ${enrollment.group?.title} (${course?.title || 'Course'})`,
+      type: "New_Enrollment",
+      actor: enrollment.student._id,
+      refId: enrollment._id,
+      refCollection: "Enrollment"
+    });
+    emitNotification({ receiverRole: "admin", notification: adminNotification });
+
+    // Notify Student
+    const studentNotification = await notificationService.notifyUser({
+      receiver: enrollment.student._id,
+      title: "Enrollment Successful",
+      message: `You've been enrolled in ${enrollment.group?.title}`,
+      type: "New_Enrollment",
+      actor: enrollment.parent,
+      refId: enrollment._id,
+      refCollection: "Enrollment"
+    });
+    emitNotification({ userId: enrollment.student._id, notification: studentNotification });
+
+    // Notify Parent
+    const parentNotification = await notificationService.notifyUser({
+      receiver: enrollment.parent,
+      title: "Student Enrolled",
+      message: `Your student ${enrollment.student?.name} has been enrolled in ${enrollment.group?.title}`,
+      type: "New_Enrollment",
+      actor: enrollment.student._id,
+      refId: enrollment._id,
+      refCollection: "Enrollment"
+    });
+    emitNotification({ userId: enrollment.parent, notification: parentNotification });
   }
 
   async creditTeacher(teacherId, amount) {

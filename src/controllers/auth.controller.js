@@ -2,6 +2,7 @@ import AppError from "../utils/app.error.js";
 import asyncHandler from "express-async-handler";
 import authService from "../services/auth.service.js";
 import mailService from "../services/mail.service.js";
+import notificationService from "../services/notification.service.js";
 import { CLIENT_URL } from "../utils/constants.js";
 
 
@@ -12,7 +13,7 @@ class AuthController {
         this.mailService = mailService;
     }
 
-/* --- --- --- AUTH CONTROLLER --- --- --- */    
+    /* --- --- --- AUTH CONTROLLER --- --- --- */
 
     /** Register a new user
      * @route POST /api/v1/auth/register
@@ -32,6 +33,18 @@ class AuthController {
         //  Set the  REFRESH TOKEN in cookie
         this.authService.setRefreshCookie(res, refreshToken);
         this.authService.setAccessCookie(res, accessToken);
+
+        // Notify admins about new user registration
+        try {
+            await notificationService.notifyByRole({
+                role: "admin",
+                title: "New User Registration",
+                message: `${user.name} (${user.role}) has registered`,
+                type: "SYSTEM",
+            });
+        } catch (error) {
+            console.error("Failed to send registration notification:", error);
+        }
 
         //response with user and access token (body) >> maybe needs refactoring later
         res.status(201).json({
@@ -111,11 +124,11 @@ class AuthController {
             throw AppError.badRequest('Email is required');
         }
         const user = await this.authService.findOne({ email }, '+password');
-        
+
         const { otp, otpExpiry } = this.authService.generateOTP(15);
 
         await this.authService.updateById(user._id, { otp, otpExpiry });
-        
+
         await this.mailService.initiatePasswordReset(email, otp);
 
         res.status(200).json({
@@ -156,7 +169,7 @@ class AuthController {
 
         this.authService.setRefreshCookie(res, newRefreshToken);
 
-this.authService.setAccessCookie(res, accessToken);
+        this.authService.setAccessCookie(res, accessToken);
         res.status(200).json({
             success: true,
             message: 'Token refreshed successfully',
@@ -166,7 +179,7 @@ this.authService.setAccessCookie(res, accessToken);
     });
 
     /* --- --- --- OAUTH CONTROLLERS --- --- --- */
-    
+
     /** Google OAuth callback
      * @route GET /api/v1/auth/google/callback
      * @access Public
@@ -174,7 +187,7 @@ this.authService.setAccessCookie(res, accessToken);
     googleCallback = asyncHandler(async (req, res) => {
         const oauthData = req.user;
         const fallbackURL = req.query.fallbackUrl || `${CLIENT_URL}/login?error=oauth_failed&success=false`;
-        
+
         if (!oauthData || !oauthData.provider || !oauthData.providerId || !oauthData.email) {
             return res.redirect(fallbackURL);
         }
@@ -246,7 +259,7 @@ this.authService.setAccessCookie(res, accessToken);
         res.status(200).json({
             success: true,
             message: 'Profile completed successfully',
-            data: {user: userData},
+            data: { user: userData },
         });
     });
 
@@ -257,15 +270,16 @@ this.authService.setAccessCookie(res, accessToken);
      * @access Public
      */
     verifyEmail = asyncHandler(async (req, res) => {
-    const { token } = req.body;
-    if (!token) throw AppError.badRequest('Verification token is required');
+        const { token } = req.body;
+        if (!token) throw AppError.badRequest('Verification token is required');
 
-    const user = await this.authService.verifyEmailToken(token);
+        const user = await this.authService.verifyEmailToken(token);
 
-    res.status(200).json({ 
-        success:true,
-        message: 'Email verified',
-        user: this.authService.sanitize(user) });
+        res.status(200).json({
+            success: true,
+            message: 'Email verified',
+            user: this.authService.sanitize(user)
+        });
     });
 
     /** Verify email (GET - for clicking link in email)
@@ -293,18 +307,18 @@ this.authService.setAccessCookie(res, accessToken);
      * @access Public (rate-limited)
      */
     resendVerification = asyncHandler(async (req, res) => {
-    const { email } = req.body;
-    if (!email) throw AppError.badRequest('Email is required');
+        const { email } = req.body;
+        if (!email) throw AppError.badRequest('Email is required');
 
-    const user = await this.authService.findOne({email}, '+emailVerified');
-    if (!user) throw AppError.notFound('User not found');
-    if (user.emailVerified) return res.status(400).json({ success:false, message: 'Email already verified' });
+        const user = await this.authService.findOne({ email }, '+emailVerified');
+        if (!user) throw AppError.notFound('User not found');
+        if (user.emailVerified) return res.status(400).json({ success: false, message: 'Email already verified' });
 
-    const verificationToken = this.authService.generateToken(user);
-    const verificationLink = `${CLIENT_URL}/auth/verify-email?token=${verificationToken}`;
-    await this.mailService.initiateAccountVerfication(email, verificationLink);
+        const verificationToken = this.authService.generateToken(user);
+        const verificationLink = `${CLIENT_URL}/auth/verify-email?token=${verificationToken}`;
+        await this.mailService.initiateAccountVerfication(email, verificationLink);
 
-    res.status(200).json({ success:true, message: 'Verification email sent' });
+        res.status(200).json({ success: true, message: 'Verification email sent' });
     });
 
     /** Test mail speed (debug only)
@@ -317,8 +331,8 @@ this.authService.setAccessCookie(res, accessToken);
 
         const start = Date.now();
         const result = await this.mailService.sendEmail(
-            email, 
-            "Speed Test", 
+            email,
+            "Speed Test",
             "<p>Speed test</p>"
         );
         const duration = Date.now() - start;
@@ -329,7 +343,7 @@ this.authService.setAccessCookie(res, accessToken);
             messageId: result.info.messageId,
             note: "If this response was fast (<5s) but email arrives late, the issue is with Gmail/Provider delivery queue."
         });
-    });  
+    });
 
 }
 

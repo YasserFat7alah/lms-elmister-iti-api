@@ -12,6 +12,8 @@ router.use(authenticate);
 router.get("/", NotificationController.getMyNotifications);
 //mark a notification as read
 router.patch("/:id/read", NotificationController.markAsRead);
+//delete a notification
+router.delete("/:id", NotificationController.deleteNotification);
 
 //send a notification to all users by role "body:{ title, message, role?, type? }"
 router.post("/send", authorize("admin"), NotificationController.sendNotification);

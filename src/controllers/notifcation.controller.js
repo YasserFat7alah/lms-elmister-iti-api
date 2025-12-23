@@ -35,7 +35,22 @@ class NotificationController {
     });
 
     /**
- * Admin sends a notification to a role or all users >>(Admin) 
+     * Delete a notification
+     * @routes DELETE /api/v1/notifications/:id
+     */
+    deleteNotification = asyncHandler(async (req, res) => {
+        const { id } = req.params;
+
+        await notificationService.deleteNotification(id, req.user._id);
+
+        res.json({
+            success: true,
+            message: "Notification deleted successfully"
+        });
+    });
+
+    /**
+ * Admin sends a notification to a role or all users >> (Admin) 
  * @routes POST /api/v1/notifications/send
  */
     sendNotification = asyncHandler(async (req, res) => {

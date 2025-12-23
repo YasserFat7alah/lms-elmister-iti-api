@@ -1,6 +1,7 @@
 import User from "../models/users/User.js";
 import Notification from "../models/Notification.js";
 import AppError from "../utils/app.error.js";
+import { emitNotification } from "../config/socket/index.js";
 
 class NotificationService {
 
@@ -38,6 +39,17 @@ class NotificationService {
             priority,
             targetAdmin: false
         });
+
+        // Emit socket event
+        try {
+            await emitNotification({
+                userId: receiver,
+                notification: notification.toObject() // ensure it's a plain object
+            });
+        } catch (error) {
+            console.error("Failed to emit socket notification:", error);
+            // Don't fail the request if socket fails
+        }
 
         return notification;
     }
@@ -84,7 +96,24 @@ class NotificationService {
             targetAdmin: false
         }));
 
-        return await Notification.insertMany(notifications);
+        const createdNotifications = await Notification.insertMany(notifications);
+
+        // Emit socket events
+        // Optimization: Could emit to a list of users if socket supported it, 
+        // but for now we'll iterate or if there's a group equivalent.
+        // Assuming individual emissions for now.
+        createdNotifications.forEach(notification => {
+            try {
+                emitNotification({
+                    userId: notification.receiver,
+                    notification: notification.toObject()
+                });
+            } catch (error) {
+                console.error(`Failed to emit socket notification for user ${notification.receiver}:`, error);
+            }
+        });
+
+        return createdNotifications;
     }
 
 
@@ -124,6 +153,16 @@ class NotificationService {
             targetAdmin: role === "admin"
         });
 
+        // Emit socket event to role room
+        try {
+            await emitNotification({
+                receiverRole: role,
+                notification: notification.toObject()
+            });
+        } catch (error) {
+            console.error(`Failed to emit socket notification for role ${role}:`, error);
+        }
+
         return notification;
     }
 
@@ -159,21 +198,6 @@ class NotificationService {
             refCollection,
             priority
         });
-
-        // const notification = await Notification.create({
-        //     title,
-        //     message,
-        //     type,
-        //     actor,
-        //     refId,
-        //     refCollection,
-        //     priority,
-        //     receiver: null,
-        //     receiverRole: "admin",
-        //     targetAdmin: true
-        // });
-
-        // return notification;
     }
 
 
@@ -232,7 +256,27 @@ class NotificationService {
         return notification;
     }
 
+    /**
+     * Delete a notification for a specific user.
+     * @param {string} notificationId - The ID of the notification
+     * @param {string} userId - The ID of the user
+     * @returns {Promise<Notification>} The deleted notification
+     */
+    async deleteNotification(notificationId, userId) {
+        const notification = await Notification.findOne({
+            _id: notificationId,
+            $or: [{ receiver: userId }, { receiver: null }]
+        });
 
-}   
+        if (!notification) {
+            throw AppError.notFound("Notification not found");
+        }
+
+        await notification.deleteOne();
+        return notification;
+    }
+
+
+}
 
 export default new NotificationService();
