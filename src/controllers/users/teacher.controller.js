@@ -81,6 +81,20 @@ class TeacherController {
             data: certificates
         });
     });
+
+    /** Check if teacher profile exists
+     * @route GET /api/v1/teachers/profile/exists
+     * @access Private Teacher
+     * @returns {object} exists boolean
+     */
+    checkProfileExists = asyncHandler(async (req, res) => {
+        const exists = await this.service.checkProfileExists(req.user._id);
+
+        res.status(200).json({
+            success: true,
+            data: { exists }
+        });
+    });
 }
 
 export default new TeacherController(teacherService);

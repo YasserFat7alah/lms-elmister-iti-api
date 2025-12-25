@@ -730,7 +730,7 @@ class ChildrenService extends BaseService {
         let totalMonthlyFee = 0;
         const childrenMap = new Map();
 
-        const childrenUsers = await User.find({ _id: { $in: childIds } }).select('name avatar');
+        const childrenUsers = await User.find({ _id: { $in: childIds } }).select('name avatar username');
 
         // Helper to get StudentProfile for grade
         const studentProfiles = await StudentProfile.find({ user: { $in: childIds } }).select('user grade');
@@ -742,6 +742,7 @@ class ChildrenService extends BaseService {
             childrenMap.set(child._id.toString(), {
                 id: child._id,
                 name: child.name,
+                username: child.username,
                 avatar: avatarUrl,
                 grade: gradeMap.get(child._id.toString()) || 'N/A',
                 enrolledCourses: [],
@@ -776,10 +777,14 @@ class ChildrenService extends BaseService {
                     status: enrollment.status, // Added
                     cancelAtPeriodEnd: enrollment.cancelAtPeriodEnd, // Added
                     title: enrollment.course?.title || enrollment.group.title,
+                    groupTitle: enrollment.group?.title || 'Group',
+                    courseTitle: enrollment.course?.title || 'Course',
                     instructor: teacherName,
                     price: price,
                     nextAttendance: nextAttendance,
-                    paidAt: paidDate
+                    paidAt: paidDate,
+                    startDate: enrollment.currentPeriodStart || enrollment.createdAt,
+                    nextBillingDate: enrollment.currentPeriodEnd
                 });
             }
         }

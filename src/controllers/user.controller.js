@@ -76,12 +76,12 @@ class UserController {
   /** Get Public Teachers (Filtered & Paginated) */
   getPublicTeachers = asyncHandler(async (req, res) => {
     // Extract filters from Query
-    const { subject, rating, search, minPrice, maxPrice } = req.query;
+    const { subject, rating, search, minPrice, maxPrice, sort } = req.query;
     const { page, limit } = req.query;
 
     // Pass to Service
     const result = await this.userService.getPublicTeachers(
-      { subject, rating, search, minPrice, maxPrice },
+      { subject, rating, search, minPrice, maxPrice, sort },
       { page, limit }
     );
 

@@ -23,7 +23,7 @@ export function initSocket(server, options = {}) {
         // ✅ Use explicit path without trailing slash
         path: "/socket.io",
         // Use polling first for Vercel compatibility, fallback to websocket
-        transports: ['polling', 'websocket']
+        transports: ['websocket', 'polling']
     });
 
     console.log('[Socket.io] ✅ Initializing Socket.io server...');

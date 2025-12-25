@@ -27,7 +27,7 @@ class CourseService extends BaseService {
      * @return {Promise<Object>} - An object containing total number of courses, current page, total number of pages, and an array of course objects.
      */
     async getCourses(filters, options) {
-        const { page = 1, limit = 10, minPrice, maxPrice, priceRanges = [], populate, calculatePrice } = options;
+        const { page = 1, limit = 10, minPrice, maxPrice, priceRanges = [], populate, calculatePrice, sort } = options;
         const skip = (page - 1) * limit;
 
         // --- Filter Mapping (Frontend -> Backend) ---
@@ -130,6 +130,21 @@ class CourseService extends BaseService {
             .limit(parseInt(limit))
             .select('-__v')
             .lean();
+
+        // Sorting Logic
+        if (sort) {
+            if (sort === 'top_rated') {
+                query.sort({ averageRating: -1, ratingsCount: -1 });
+            } else if (sort === 'newest') {
+                query.sort({ createdAt: -1 });
+            } else if (sort === 'price_asc') {
+                query.sort({ price: 1 });
+            } else if (sort === 'price_desc') {
+                query.sort({ price: -1 });
+            }
+        } else {
+            query.sort({ createdAt: -1 }); // Default
+        }
 
         if (populate) query.populate(populate);
 

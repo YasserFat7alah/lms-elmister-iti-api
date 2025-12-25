@@ -262,11 +262,15 @@ class NotificationService {
      * @param {string} userId - The ID of the user
      * @returns {Promise<Notification>} The deleted notification
      */
-    async deleteNotification(notificationId, userId) {
-        const notification = await Notification.findOne({
-            _id: notificationId,
-            $or: [{ receiver: userId }, { receiver: null }]
-        });
+    async deleteNotification(notificationId, user) {
+        // Log query params for debugging
+        // console.log(`Deleting notification ${notificationId} for user ${user._id} role ${user.role}`);
+
+        const query = user.role === "admin"
+            ? { _id: notificationId, $or: [{ receiver: user._id }, { receiver: null }, { targetAdmin: true }] }
+            : { _id: notificationId, receiver: user._id };
+
+        const notification = await Notification.findOne(query);
 
         if (!notification) {
             throw AppError.notFound("Notification not found");

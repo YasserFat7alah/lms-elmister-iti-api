@@ -222,7 +222,7 @@ class CourseController {
      * @query {string} limit - The number of items per page
      */
     getPublicCourses = asyncHandler(async (req, res, next) => {
-        const { page, limit, minPrice, maxPrice, ...filters } = req.query;
+        const { page, limit, minPrice, maxPrice, sort, ...filters } = req.query;
 
         // Force published only
         filters.status = "published";
@@ -267,6 +267,7 @@ class CourseController {
             limit,
             minPrice,
             maxPrice,
+            sort,
             populate: populateOptions,
             calculatePrice: true,
         });

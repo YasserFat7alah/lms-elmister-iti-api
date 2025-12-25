@@ -97,7 +97,7 @@ class EnrollmentService extends BaseService {
       await this.ensureStudentInGroup(groupId, studentId);
 
       // Notify Teacher
-      const teacherNotification = await notificationService.notifyUser({
+      await notificationService.notifyUser({
         receiver: group.teacherId,
         title: "New Student Enrollment",
         message: `New student ${student.name} has joined your group ${group.title}`,
@@ -106,10 +106,9 @@ class EnrollmentService extends BaseService {
         refId: enrollment._id,
         refCollection: "Enrollment"
       });
-      emitNotification({ userId: group.teacherId, notification: teacherNotification });
 
       // Notify Admin
-      const adminNotification = await notificationService.notifyByRole({
+      await notificationService.notifyByRole({
         role: "admin",
         title: "New Enrollment",
         message: `Student ${student.name} enrolled in ${group.title} (${group.courseId.title})`,
@@ -118,10 +117,9 @@ class EnrollmentService extends BaseService {
         refId: enrollment._id,
         refCollection: "Enrollment"
       });
-      emitNotification({ receiverRole: "admin", notification: adminNotification });
 
       // Notify Student
-      const studentNotification = await notificationService.notifyUser({
+      await notificationService.notifyUser({
         receiver: studentId,
         title: "Enrollment Successful",
         message: `You've been enrolled in ${group.title}`,
@@ -130,10 +128,9 @@ class EnrollmentService extends BaseService {
         refId: enrollment._id,
         refCollection: "Enrollment"
       });
-      emitNotification({ userId: studentId, notification: studentNotification });
 
       // Notify Parent
-      const parentNotification = await notificationService.notifyUser({
+      await notificationService.notifyUser({
         receiver: parentId,
         title: "Student Enrolled",
         message: `Your student ${student.name} has been enrolled in ${group.title}`,
@@ -142,7 +139,6 @@ class EnrollmentService extends BaseService {
         refId: enrollment._id,
         refCollection: "Enrollment"
       });
-      emitNotification({ userId: parentId, notification: parentNotification });
 
       return {
         url: null,
@@ -245,23 +241,176 @@ class EnrollmentService extends BaseService {
 
     await enrollment.save();
 
-    // Notify Teacher of cancellation
+    // Notify Teacher and Admin of cancellation
     const student = await User.findById(enrollment.student);
     const group = await Group.findById(enrollment.group);
 
     if (group && student) {
-      const notification = await notificationService.notifyUser({
+      // Notify Teacher
+      await notificationService.notifyUser({
         receiver: enrollment.teacher,
         title: "Student Dropped",
-        message: `Student ${student.name} has left your group ${group.title}`,
+        message: `Student ${student.name} will be leaving your group ${group.title} at the end of the billing period.`,
         type: "SYSTEM",
         refId: enrollment._id,
         refCollection: "Enrollment"
       });
-      emitNotification({ userId: enrollment.teacher, notification });
+
+      // Notify Admin
+      await notificationService.notifyByRole({
+        role: "admin",
+        title: "Enrollment Cancelled",
+        message: `Student ${student.name} cancelled subscription for ${group.title}.`,
+        type: "SYSTEM",
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
     }
 
     return enrollment;
+  }
+
+  /** Force cancel enrollment immediately and create ticket */
+  async forceCancel(userId, enrollmentId, reasonData, role = "parent") {
+    console.log(`[ForceCancel] Started for user ${userId}, enrollment ${enrollmentId}`);
+
+    // Validate inputs
+    if (!reasonData || !reasonData.reason) {
+      throw AppError.badRequest("Cancellation reason is required");
+    }
+
+    const enrollment = await Enrollment.findById(enrollmentId)
+      .populate('student', 'name email')
+      .populate('group', 'title')
+      .populate('course', 'title')
+      .populate('parent', 'name email phone');
+
+    if (!enrollment) {
+      console.error("[ForceCancel] Enrollment not found");
+      throw AppError.notFound("Enrollment not found");
+    }
+
+    if (role === "parent" && enrollment.parent._id.toString() !== userId.toString()) {
+      console.error("[ForceCancel] Auth mismatch");
+      throw AppError.forbidden("You do not own this enrollment");
+    }
+
+    try {
+      // 1. Create Support Ticket
+      console.log("[ForceCancel] Preparing ticket data...");
+      const ticketData = {
+        name: enrollment.parent.name,
+        email: enrollment.parent.email,
+        phone: enrollment.parent.phone || "Not Provided",
+        subject: `Early Cancellation: ${enrollment.student.name} - ${enrollment.course ? enrollment.course.title : 'Course'}`,
+        message: `
+            === EARLY CANCELLATION REQUEST ===
+            Reason Category: ${reasonData.reason}
+            Details: ${reasonData.reasonDetails || 'None'}
+            
+            --- Subscription Details ---
+            Student: ${enrollment.student.name} (${enrollment.student.email})
+            Group: ${enrollment.group ? enrollment.group.title : 'Unknown Group'}
+            Course: ${enrollment.course ? enrollment.course.title : 'Unknown Course'}
+            Enrollment ID: ${enrollment._id}
+            Teacher ID: ${enrollment.teacher}
+          `,
+        status: 'open' // ensure this matches enum in Ticket model
+      };
+
+      // Dynamic import to avoid circular dependency if any
+      const { default: ticketService } = await import("../ticket.service.js");
+      if (ticketService && ticketService.createTicket) {
+        await ticketService.createTicket(ticketData);
+        console.log("[ForceCancel] Ticket created.");
+      } else {
+        console.error("[ForceCancel] TicketService not found or invalid.");
+        // Don't block cancellation if ticket fails? Or strictly require it?
+        // Let's log but proceed to ensure user can cancel.
+      }
+
+
+      // 2. Handle Stripe Cancellation (Immediate)
+      if (enrollment.subscriptionId) {
+        try {
+          const stripeUpdated = await stripe.subscriptions.cancel(enrollment.subscriptionId);
+          enrollment.status = stripeUpdated.status; // usually 'canceled'
+          enrollment.canceledAt = new Date();
+          enrollment.cancelAtPeriodEnd = false; // It's done now
+        } catch (stripeError) {
+          console.error("Stripe force cancel error:", stripeError);
+          // Force local cancel on error
+          enrollment.status = "canceled";
+          enrollment.canceledAt = new Date();
+        }
+      } else {
+        enrollment.status = "canceled";
+        enrollment.canceledAt = new Date();
+      }
+
+      await enrollment.save();
+
+      // 3. Remove student from Group
+      if (enrollment.group) {
+        const groupId = enrollment.group._id || enrollment.group;
+        const studentId = enrollment.student._id || enrollment.student;
+        await this.removeStudentFromGroup(groupId, studentId);
+      }
+
+      // 4. Notifications (All Parties)
+      const student = enrollment.student;
+      const group = enrollment.group;
+      const teacherId = enrollment.teacher;
+
+      // Helper to safely get title
+      const groupTitle = group ? group.title : "Class";
+
+      // Notify Teacher
+      await notificationService.notifyUser({
+        receiver: teacherId,
+        title: "Student Left (Early Cancel)",
+        message: `Student ${student.name} has cancelled and left ${groupTitle} immediately. Reason logged in support.`,
+        type: "SYSTEM",
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+
+      // Notify Admin
+      await notificationService.notifyByRole({
+        role: "admin",
+        title: "Urgent: Early Cancellation",
+        message: `Ticket created for ${student.name}'s early cancellation from ${groupTitle}.`,
+        type: "SYSTEM",
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+
+      // Notify Parent
+      await notificationService.notifyUser({
+        receiver: userId,
+        title: "Cancellation Confirmed",
+        message: `Subscription for ${groupTitle} has been cancelled immediately. A support ticket has been opened.`,
+        type: "SYSTEM",
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+
+      // Notify Student
+      await notificationService.notifyUser({
+        receiver: student._id,
+        title: "Enrollment Cancelled",
+        message: `Your enrollment in ${groupTitle} has ended.`,
+        type: "SYSTEM",
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+
+      return enrollment;
+
+    } catch (error) {
+      console.error("[ForceCancel] Critical error:", error);
+      throw error; // Re-throw to be caught by controller
+    }
   }
 
   /** Renew a cancelled enrollment (remove cancel_at_period_end flag) */
@@ -310,7 +459,94 @@ class EnrollmentService extends BaseService {
     }
 
     await enrollment.save();
+
+    // Notify Teacher and Admin of renewal
+    const student = await User.findById(enrollment.student);
+    const group = await Group.findById(enrollment.group);
+
+    if (group && student) {
+      // Notify Teacher
+      await notificationService.notifyUser({
+        receiver: enrollment.teacher,
+        title: "Student Renewed",
+        message: `Student ${student.name} has renewed their subscription for ${group.title}.`,
+        type: "New_Enrollment", // Reuse type or create new? Using New_Enrollment triggers excitement
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+
+      // Notify Admin
+      await notificationService.notifyByRole({
+        role: "admin",
+        title: "Enrollment Renewed",
+        message: `Student ${student.name} renewed subscription for ${group.title}.`,
+        type: "New_Enrollment",
+        refId: enrollment._id,
+        refCollection: "Enrollment"
+      });
+    }
+
     return enrollment;
+  }
+
+  /** Complete payment for incomplete enrollment */
+  async completePayment(userId, enrollmentId) {
+    const enrollment = await Enrollment.findById(enrollmentId).populate('group');
+    if (!enrollment) throw AppError.notFound("Enrollment not found");
+
+    if (enrollment.parent.toString() !== userId.toString()) {
+      throw AppError.forbidden("You do not own this enrollment");
+    }
+
+    if (enrollment.status !== 'incomplete') {
+      throw AppError.badRequest(`Enrollment is ${enrollment.status}, only incomplete subscriptions can be paid.`);
+    }
+
+    // If session exists and not expired (hard to check expiry easily without Stripe call), try to reuse
+    // But simplest is to create new session if old one is likely old. 
+    // Let's just create a new one to be safe and ensure it works
+    const group = enrollment.group;
+    if (!group) throw AppError.notFound("Associated group not found");
+
+    const parentProfile = await this.getParentProfile(userId);
+    const stripeCustomerId = enrollment.customerId || await paymentService.getCustomerId({ _id: userId }, parentProfile);
+    const stripePriceId = enrollment.priceId || await paymentService.getPriceId(group);
+
+    const session = await paymentService.createCheckoutSession({
+      customerId: stripeCustomerId,
+      priceId: stripePriceId,
+      successUrl: `${CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${CLIENT_URL}/payment/canceled`,
+      metadata: {
+        enrollmentId: enrollment._id.toString(),
+        groupId: group._id.toString(),
+        studentId: enrollment.student.toString(),
+        teacherId: group.teacherId.toString(),
+        parentId: userId.toString(),
+        courseId: group.courseId ? group.courseId.toString() : ""
+      },
+    });
+
+    enrollment.checkoutSessionId = session.id;
+    await enrollment.save();
+
+    return { url: session.url };
+  }
+
+  /** Remove cancelled enrollment */
+  async remove(userId, enrollmentId, role = "parent") {
+    const enrollment = await Enrollment.findById(enrollmentId);
+    if (!enrollment) throw AppError.notFound("Enrollment not found");
+
+    if (role === "parent" && enrollment.parent.toString() !== userId.toString()) {
+      throw AppError.forbidden("You do not own this enrollment");
+    }
+
+    if (enrollment.status !== 'canceled') {
+      throw AppError.badRequest("Only canceled subscriptions can be removed.");
+    }
+
+    await Enrollment.findByIdAndDelete(enrollmentId);
   }
 
   /* --- --- --- HELPERS --- --- --- */

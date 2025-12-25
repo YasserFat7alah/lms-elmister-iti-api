@@ -23,16 +23,22 @@ class ChatService {
             { new: true, upsert: true }
         );
 
-        // Populate participants
-        const populatedConv = await Conversation.findById(conv._id).populate('participants', 'name role');
+        // Populate participants with full details including avatar and username
+        const populatedConv = await Conversation.findById(conv._id).populate('participants', 'name username role avatar');
         console.log('[ChatService] Conversation upserted/retrieved:', conv._id, 'participants:', populatedConv?.participants || conv.participants);
         return populatedConv || conv;
     }
 
     async getUserConversations(userId) {
         const convs = await Conversation.find({ participants: userId })
-            .populate("participants", "name role")
-            .populate("lastMessage")
+            .populate("participants", "name username role avatar")
+            .populate({
+                path: "lastMessage",
+                populate: {
+                    path: "sender",
+                    select: "name username role avatar"
+                }
+            })
             .sort({ updatedAt: -1 });
 
         // Deduplicate conversations in case DB contains duplicates (by participantsKey or computed key)
@@ -63,7 +69,7 @@ class ChatService {
             throw AppError.forbidden("You are not part of this conversation");
         }
         const messages = await Message.find({ conversation: conversationId })
-            .populate("sender", "name role")
+            .populate("sender", "name username role avatar")
             .sort({ createdAt: 1 });
 
         return messages;

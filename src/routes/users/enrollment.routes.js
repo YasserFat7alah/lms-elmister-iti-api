@@ -35,10 +35,28 @@ router.delete(
   enrollmentController.cancel
 );
 
+router.delete(
+  "/:enrollmentId/force",
+  authorize("parent"),
+  enrollmentController.forceCancel
+);
+
 router.patch(
   "/:enrollmentId/renew",
   authorize("parent"),
   enrollmentController.renew
+);
+
+router.post(
+  "/:enrollmentId/pay",
+  authorize("parent"),
+  enrollmentController.completePayment
+);
+
+router.delete(
+  "/:enrollmentId/remove",
+  authorize("parent"),
+  enrollmentController.remove
 );
 
 export { router as enrollmentRouter };

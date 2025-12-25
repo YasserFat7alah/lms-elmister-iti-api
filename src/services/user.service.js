@@ -336,7 +336,28 @@ class UserService extends BaseService {
       });
     }
 
-    // 7. Facet for Pagination
+    // 7. Sort Stage
+    const sortStage = {};
+    if (filters.sort) {
+      if (filters.sort === 'name') sortStage.name = 1;
+      else if (filters.sort === '-name') sortStage.name = -1;
+      else if (filters.sort === 'rating') sortStage['teacherData.averageRating'] = -1;
+      else if (filters.sort === '-rating') sortStage['teacherData.averageRating'] = -1;
+      else if (filters.sort === 'top_rated') {
+        sortStage['teacherData.averageRating'] = -1;
+        sortStage['teacherData.totalRatings'] = -1;
+      }
+    } else {
+      // Default Sort
+      sortStage.createdAt = -1;
+    }
+
+    // Push Sort Stage BEFORE Facet to ensure correct ordering across pages
+    if (Object.keys(sortStage).length > 0) {
+      pipeline.push({ $sort: sortStage });
+    }
+
+    // 8. Facet for Pagination
     pipeline.push({
       $facet: {
         metadata: [{ $count: "total" }],

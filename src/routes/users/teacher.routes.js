@@ -38,6 +38,10 @@ router.delete("/me/certificates/:id",
     teacherController.deleteCertificate
 );
 
+router.get("/profile/exists",
+    teacherController.checkProfileExists
+);
+
 router.post("/payouts/onboard", payoutController.onboard);
 router.get("/payouts/onboard/callback", payoutController.checkOnboarding);
 

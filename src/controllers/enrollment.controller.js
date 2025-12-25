@@ -140,6 +140,25 @@ class EnrollmentController {
     });
   });
 
+  /** Force cancel enrollment immediately */
+  forceCancel = asyncHandler(async (req, res) => {
+    if (req.user.role !== "parent") {
+      throw AppError.forbidden("Only parents can force cancel enrollments");
+    }
+
+    const userId = req.user._id || req.user.id;
+    const { enrollmentId } = req.params;
+    const reasonData = req.body; // { reason, reasonDetails }
+
+    const enrollment = await this.service.forceCancel(userId, enrollmentId, reasonData, req.user.role);
+
+    res.status(200).json({
+      success: true,
+      message: "Subscription cancelled immediately and ticket created.",
+      data: { enrollment }
+    });
+  });
+
   /** Renew an enrollment (remove cancel_at_period_end) */
   renew = asyncHandler(async (req, res) => {
     if (req.user.role !== "parent" && req.user.role !== "admin") {
@@ -157,6 +176,41 @@ class EnrollmentController {
       data: {
         enrollment,
       }
+    });
+  });
+
+  /** Complete payment for an incomplete enrollment */
+  completePayment = asyncHandler(async (req, res) => {
+    if (req.user.role !== "parent") {
+      throw AppError.forbidden("Only parents can complete payments");
+    }
+
+    const userId = req.user._id || req.user.id;
+    const { enrollmentId } = req.params;
+
+    const result = await this.service.completePayment(userId, enrollmentId);
+
+    res.status(200).json({
+      success: true,
+      message: "Redirecting to payment...",
+      url: result.url
+    });
+  });
+
+  /** Remove a canceled enrollment from view */
+  remove = asyncHandler(async (req, res) => {
+    if (req.user.role !== "parent" && req.user.role !== "admin") {
+      throw AppError.forbidden("Only parents or admins can remove enrollments");
+    }
+
+    const userId = req.user._id || req.user.id;
+    const { enrollmentId } = req.params;
+
+    await this.service.remove(userId, enrollmentId, req.user.role);
+
+    res.status(200).json({
+      success: true,
+      message: "Subscription removed successfully"
     });
   });
 

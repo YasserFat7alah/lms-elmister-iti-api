@@ -538,6 +538,15 @@ class TeacherService extends BaseService {
 
         return profile.certificates;
     }
+
+    /** Check if teacher profile exists for a user
+     * @param {string} userId - The ID of the user
+     * @returns {boolean} Whether the profile exists
+     */
+    async checkProfileExists(userId) {
+        const profile = await this.model.findOne({ user: userId }).select('_id');
+        return !!profile;
+    }
 }
 
 export default new TeacherService(TeacherProfile);
